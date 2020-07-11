@@ -6,4 +6,4 @@
 [Mirror](https://github.com/vis2k/Mirror)  
 
 ### Examples:
-[Only Gane](https://github.com/PsarTech-Shorii/Only-Gane) : Online game template for Unity using MazeTer and Mirror  
+[Only-Gane](https://github.com/PsarTech-Shorii/Only-Gane) : Online game template using MazeTer and Mirror  
