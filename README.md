@@ -2,7 +2,7 @@
 **MazeTer** is a [**Insight**](https://github.com/uweenukr/Insight) fork  
 
 ### Requirements:
-[Unity](https://unity.com/fr): 2018.3.6+  
+[Unity](https://unity.com/fr)  
 [Mirror](https://github.com/vis2k/Mirror)  
 
 ### Examples:
