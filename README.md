@@ -1,5 +1,5 @@
-### Insight
-MazeTer is a Insight fork  
+### MazeTer
+**MazeTer** is a [**Insight**](https://github.com/uweenukr/Insight) fork  
 
 ### Requirements:
 [Mirror](https://github.com/vis2k/Mirror)  
