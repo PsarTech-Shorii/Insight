@@ -1,7 +1,7 @@
 ﻿using Mirror;
 using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.Assertions;
 
@@ -20,24 +20,22 @@ namespace Insight {
 	}
 
 	public delegate void InsightMessageDelegate(InsightMessage insightMsg);
+	public delegate void CallbackHandler(InsightMessage insightMsg);
 
 	public abstract class InsightCommon : MonoBehaviour {
-		protected struct CallbackData {
-			public InsightMessage messageSent;
+		private class CallbackData {
 			public CallbackHandler callback;
-			public float timeout;
+			public IEnumerator expirationCor;
 		}
 
-		public delegate void CallbackHandler(InsightMessage insightMsg);
-		
 		private const float CallbackTimeout = 30f;
 
 		private int _callbackIdIndex; // 0 is a _special_ id - it represents _no callback_. 
-		private readonly List<int> _abandonnedCallback = new List<int>();
+		private readonly List<int> _expiredCallback = new List<int>();
 		private readonly Dictionary<Type, InsightMessageDelegate> _messageHandlers =
 			new Dictionary<Type, InsightMessageDelegate>();
 
-		protected readonly Dictionary<int, CallbackData> callbacks = new Dictionary<int, CallbackData>();
+		private readonly Dictionary<int, CallbackData> _callbacks = new Dictionary<int, CallbackData>();
 
 		public Transport transport;
 		
@@ -45,7 +43,7 @@ namespace Insight {
 		public bool autoStart = true;
 		public string networkAddress = "localhost";
 
-		public ConnectState connectState = ConnectState.None;
+		[HideInInspector] public ConnectState connectState = ConnectState.None;
 		public bool IsConnected => connectState == ConnectState.Connected;
 
 		private void OnValidate() {
@@ -62,22 +60,14 @@ namespace Insight {
 			}
 		}
 
-		protected virtual void Start() {
-			if (dontDestroy) {
-				DontDestroyOnLoad(this);
-			}
-
+		private void Awake() {
+			if (dontDestroy) DontDestroyOnLoad(this);
 			Application.runInBackground = true;
-
-			if (autoStart) {
-				StartInsight();
-			}
-			
-			RegisterHandlers();
 		}
 
-		protected virtual void Update() {
-			CheckCallbackTimeouts();
+		private void Start() {
+			RegisterHandlers();
+			if (autoStart) StartInsight();
 		}
 
 		private void OnApplicationQuit() {
@@ -92,7 +82,7 @@ namespace Insight {
 			_messageHandlers.Add(typeof(T), handler);
 		}
 
-		public void UnRegisterHandler<T>(InsightMessageDelegate handler) {
+		public void UnregisterHandler<T>(InsightMessageDelegate handler) {
 			if (_messageHandlers.TryGetValue(typeof(T), out var handlerValue)) {
 				if (handlerValue == handler) _messageHandlers.Remove(typeof(T));
 			}
@@ -106,23 +96,31 @@ namespace Insight {
 			var callbackId = 0;
 			if (callback != null) {
 				callbackId = ++_callbackIdIndex;
-				callbacks.Add(callbackId, new CallbackData {
-					messageSent = insightMsg,
+				var callbackData = new CallbackData {
 					callback = callback,
-					timeout = Time.realtimeSinceStartup + CallbackTimeout
-				});
+					expirationCor = ExpireCallbackCor(callbackId, insightMsg, callback)
+				};
+				
+				_callbacks.Add(callbackId, callbackData);
+				StartCoroutine(callbackData.expirationCor);
 			}
 
 			insightMsg.callbackId = callbackId;
 		}
 
 		protected void HandleMessage(InsightMessage insightMsg) {
-			if (_abandonnedCallback.Contains(insightMsg.callbackId)) {
-				_abandonnedCallback.Remove(insightMsg.callbackId);
+			if (_expiredCallback.Contains(insightMsg.callbackId)) {
+				_expiredCallback.Remove(insightMsg.callbackId);
 			}
-			else if (callbacks.ContainsKey(insightMsg.callbackId) && insightMsg.status != CallbackStatus.Default) {
-				callbacks[insightMsg.callbackId].callback.Invoke(insightMsg);
-				callbacks.Remove(insightMsg.callbackId);
+			else if (_callbacks.ContainsKey(insightMsg.callbackId) && insightMsg.status != CallbackStatus.Default) {
+				var callbackData = _callbacks[insightMsg.callbackId];
+				
+				Assert.IsNotNull(callbackData.expirationCor);
+				StopCoroutine(callbackData.expirationCor);
+				
+				callbackData.callback.Invoke(insightMsg);
+				
+				_callbacks.Remove(insightMsg.callbackId);
 			}
 			else {
 				if (_messageHandlers.TryGetValue(insightMsg.MsgType, out var msgDelegate)) msgDelegate(insightMsg);
@@ -147,17 +145,15 @@ namespace Insight {
 			InternalSend(insightMsg);
 		}
 
-		private void CheckCallbackTimeouts() {
-			foreach (var callback in callbacks.Where(callback =>
-				callback.Value.timeout < Time.realtimeSinceStartup)) {
-				_abandonnedCallback.Add(callback.Key);
-				callback.Value.callback.Invoke(new InsightMessage(new EmptyMessage()) {
-					status = CallbackStatus.Timeout
-				});
-				Resend(callback.Value.messageSent, callback.Value.callback);
-				callbacks.Remove(callback.Key);
-				break;
-			}
+		private IEnumerator ExpireCallbackCor(int callbackId, InsightMessage insightMsg, CallbackHandler callback) {
+			yield return new WaitForSeconds(CallbackTimeout);
+			
+			_expiredCallback.Add(callbackId);
+			callback.Invoke(new InsightMessage(new EmptyMessage()) {
+				status = CallbackStatus.Timeout
+			});
+			Resend(insightMsg, callback);
+			_callbacks.Remove(callbackId);
 		}
 
 		protected abstract void Resend(InsightMessage insightMsg, CallbackHandler callback);

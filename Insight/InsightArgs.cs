@@ -6,7 +6,6 @@ namespace Insight {
 		public static string UniqueId => "-UniqueId";
 		public static string NetworkAddress => "-NetworkAddress";
 		public static string NetworkPort => "-NetworkPort";
-		public static string SceneName => "-SceneName";
 		public static string GameName => "-GameName";
 		public static string MinPlayers => "-MinPlayers";
 	}
@@ -20,7 +19,6 @@ namespace Insight {
 			UniqueId = ExtractValue(ArgNames.UniqueId);
 			NetworkAddress = ExtractValue(ArgNames.NetworkAddress);
 			NetworkPort = ExtractValueInt(ArgNames.NetworkPort);
-			SceneName = ExtractValue(ArgNames.SceneName);
 			GameName = ExtractValue(ArgNames.GameName);
 			MinPlayers = ExtractValueInt(ArgNames.MinPlayers);
 		}
@@ -30,7 +28,6 @@ namespace Insight {
 		public string UniqueId { get; }
 		public string NetworkAddress { get; }
 		public int NetworkPort { get; }
-		public string SceneName { get; }
 		public string GameName { get; }
 		public int MinPlayers { get; }
 

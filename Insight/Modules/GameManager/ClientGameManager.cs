@@ -3,22 +3,35 @@ using Mirror;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Assertions;
-using UnityEngine.SceneManagement;
 
 namespace Insight {
 	public class ClientGameManager : InsightModule {
-		private InsightClient _client;
-		public string uniqueId;
-
-		[HideInInspector] public List<GameContainer> gamesList = new List<GameContainer>();
+		public delegate void GoInGame(bool newValue);
 		
-		private Transport _networkManagerTransport;
+		private InsightClient _client;
+		private NetworkManager _netMananager;
+		private Transport _transport;
+
+		private bool _isInGame;
+
+		[HideInInspector] public string uniqueId;
+		[HideInInspector] public List<GameContainer> gamesList = new List<GameContainer>();
+
+		public event GoInGame OnGoInGame;
+		public bool IsInGame {
+			get => _isInGame;
+			private set {
+				_isInGame = value;
+				OnGoInGame?.Invoke(_isInGame);
+			}
+		}
 
 		public override void Initialize(InsightClient client, ModuleManager manager) {
 			Debug.Log("[Client - GameManager] - Initialization");
 			
 			_client = client;
-			_networkManagerTransport = Transport.activeTransport;
+			_netMananager = NetworkManager.singleton;
+			_transport = Transport.activeTransport;
 
 			RegisterHandlers();
 		}
@@ -41,14 +54,15 @@ namespace Insight {
 				case CallbackStatus.Default:
 				case CallbackStatus.Success: {
 					var responseReceived = (ChangeServerMsg) insightMsg.message;
-					if (_networkManagerTransport.GetType().GetField("port") != null) {
-						_networkManagerTransport.GetType().GetField("port")
-							.SetValue(_networkManagerTransport, responseReceived.networkPort);
+					if (_transport.GetType().GetField("port") != null) {
+						_transport.GetType().GetField("port")
+							.SetValue(_transport, responseReceived.networkPort);
 					}
 
-					NetworkManager.singleton.networkAddress = responseReceived.networkAddress;
-					SceneManager.LoadScene(responseReceived.sceneName);
-					NetworkManager.singleton.StartClient();
+					IsInGame = true;
+
+					_netMananager.networkAddress = responseReceived.networkAddress;
+					_netMananager.StartClient();
 					break;
 				}
 				case CallbackStatus.Error:
@@ -59,10 +73,10 @@ namespace Insight {
 			}
 
 			if (insightMsg.status == CallbackStatus.Default) {
-				onReceive?.Invoke(insightMsg.message);
+				ReceiveMessage(insightMsg.message);
 			}
 			else {
-				onResponse?.Invoke(insightMsg.message, insightMsg.status);
+				ReceiveResponse(insightMsg.message, insightMsg.status);
 			}
 		}
 
@@ -72,13 +86,13 @@ namespace Insight {
 			Debug.Log("[Client - GameManager] - Received games list update");
 
 			switch (message.operation) {
-				case Operation.Add:
+				case GameListStatusMsg.Operation.Add:
 					gamesList.Add(message.game);
 					break;
-				case Operation.Remove:
+				case GameListStatusMsg.Operation.Remove:
 					gamesList.Remove(gamesList.Find(game => game.uniqueId == message.game.uniqueId));
 					break;
-				case Operation.Update:
+				case GameListStatusMsg.Operation.Update:
 					var gameTemp = gamesList.Find(game => game.uniqueId == message.game.uniqueId);
 					gameTemp.currentPlayers = message.game.currentPlayers;
 					break;
@@ -86,7 +100,7 @@ namespace Insight {
 					throw new ArgumentOutOfRangeException();
 			}
 
-			onReceive?.Invoke(message);
+			ReceiveMessage(message);
 		}
 
 		#endregion
@@ -132,12 +146,7 @@ namespace Insight {
 						gamesList.Clear();
 
 						foreach (var game in responseReceived.gamesArray) {
-							gamesList.Add(new GameContainer {
-								uniqueId = game.uniqueId,
-								sceneName = game.sceneName,
-								currentPlayers = game.currentPlayers,
-								maxPlayers = game.maxPlayers,
-							});
+							gamesList.Add(game);
 						}
 						break;
 					}
@@ -148,11 +157,12 @@ namespace Insight {
 						throw new ArgumentOutOfRangeException();
 				}
 				
-				onResponse?.Invoke(callbackMsg.message, callbackMsg.status);
+				ReceiveResponse(callbackMsg.message, callbackMsg.status);
 			});
 		}
 
 		public void CreateGame(CreateGameMsg createGameMsg) {
+			Assert.IsFalse(IsInGame);
 			Assert.IsTrue(_client.IsConnected);
 			Debug.Log("[Client - GameManager] - Creating game ");
 			createGameMsg.uniqueId = uniqueId;
@@ -160,6 +170,7 @@ namespace Insight {
 		}
 		
 		public void JoinGame(string gameUniqueId) {
+			Assert.IsFalse(IsInGame);
 			Assert.IsTrue(_client.IsConnected);
 			Debug.Log("[Client - GameManager] - Joining game : " + gameUniqueId);
 
@@ -169,14 +180,14 @@ namespace Insight {
 			}, HandleChangeServersMsg);
 		}
 
-		public void LeaveGame(string lobbySceneName) {
+		public void LeaveGame() {
+			Assert.IsTrue(IsInGame);
 			Assert.IsTrue(_client.IsConnected);
 			Debug.Log("[Client - GameManager] - Leaving game"); 
 			
 			_client.NetworkSend(new LeaveGameMsg{uniqueId = uniqueId});
-
-			NetworkManager.singleton.StopClient();
-			SceneManager.LoadScene(lobbySceneName);
+			IsInGame = false;
+			_netMananager.StopClient();
 		}
 
 		#endregion

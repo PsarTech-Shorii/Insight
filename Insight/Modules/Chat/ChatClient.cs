@@ -20,7 +20,7 @@ namespace Insight {
 
 			var message = (ChatMsg) insightMsg.message;
 			
-			onReceive?.Invoke(message);
+			ReceiveMessage(message);
 		}
 
 		public void Chat(string data) {

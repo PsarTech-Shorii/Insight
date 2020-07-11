@@ -1,20 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Events;
 
 namespace Insight {
-	public class ReceivedMessageEvent : UnityEvent<InsightMessageBase> {}
-	public class RepliedMessageEvent : UnityEvent<InsightMessageBase, CallbackStatus> {}
-
+	public delegate void ReceiveMessageEvent(InsightMessageBase message);
+	public delegate void ReceiveResponseEvent(InsightMessageBase callbackMsg, CallbackStatus status);
+	
 	public abstract class InsightModule : MonoBehaviour {
 		private static Dictionary<Type, GameObject> _instances;
 
 		private readonly List<Type> _dependencies = new List<Type>();
 		private readonly List<Type> _optionalDependencies = new List<Type>();
-
-		public ReceivedMessageEvent onReceive = new ReceivedMessageEvent();
-		public RepliedMessageEvent onResponse = new RepliedMessageEvent();
+		
+		public event ReceiveMessageEvent OnReceiveMessage;
+		public event ReceiveResponseEvent OnReceiveResponse;
 
 		/// <summary>
 		///     Returns a list of module types this module depends on
@@ -44,6 +43,14 @@ namespace Insight {
 
 		protected void AddOptionalDependency<T>() {
 			_optionalDependencies.Add(typeof(T));
+		}
+
+		protected void ReceiveMessage(InsightMessageBase message) {
+			OnReceiveMessage?.Invoke(message);
+		}
+
+		protected void ReceiveResponse(InsightMessageBase callbackMsg, CallbackStatus status) {
+			OnReceiveResponse?.Invoke(callbackMsg, status);
 		}
 	}
 }

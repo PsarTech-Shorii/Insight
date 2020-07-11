@@ -68,18 +68,32 @@ namespace Insight {
 		public int currentThreads;
 	}
 	
-	public class RequestSpawnStartMsg : InsightMessageBase {
-		public string spawnerUniqueId;
+	public abstract class RequestSpawnStartMsg : InsightMessageBase {
 		public string gameUniqueId; //Guid
 		public string networkAddress;
 		public ushort networkPort;
-		public string sceneName;
 		public string gameName;
 		public int minPlayers;
+
+		protected RequestSpawnStartMsg() {}
+
+		protected RequestSpawnStartMsg(RequestSpawnStartMsg original) {
+			gameUniqueId = original.gameUniqueId;
+			networkAddress = original.networkAddress;
+			networkPort = original.networkPort;
+			gameName = original.gameName;
+			minPlayers = original.minPlayers;
+		}
 	}
 
-	public class RequestSpawnStopMsg : InsightMessageBase {
-		public string uniqueId; //Guid
+	public class RequestSpawnStartToMasterMsg : RequestSpawnStartMsg {
+		public RequestSpawnStartToMasterMsg() {}
+		public RequestSpawnStartToMasterMsg(RequestSpawnStartMsg original) : base(original) {}
+	}
+
+	public class RequestSpawnStartToSpawnerMsg : RequestSpawnStartMsg {
+		public RequestSpawnStartToSpawnerMsg() {}
+		public RequestSpawnStartToSpawnerMsg(RequestSpawnStartMsg original) : base(original) {}
 	}
 
 	public class KillSpawnMsg : InsightMessageBase {
@@ -94,7 +108,6 @@ namespace Insight {
 		public string uniqueId; //Guid
 		public string networkAddress;
 		public ushort networkPort;
-		public string sceneName;
 		public string gameName;
 		public int minPlayers;
 		public int maxPlayers;
@@ -109,12 +122,10 @@ namespace Insight {
 		public string uniqueId;
 		public string networkAddress;
 		public ushort networkPort;
-		public string sceneName;
 	}
 
 	public class CreateGameMsg : InsightMessageBase {
 		public string uniqueId; //Guid
-		public string sceneName;
 		public string gameName;
 		public int minPlayers;
 	}
@@ -142,13 +153,13 @@ namespace Insight {
 		}
 	}
 
-	public enum Operation {
-		Add,
-		Remove,
-		Update
-	}
-
 	public class GameListStatusMsg : InsightMessageBase {
+		public enum Operation {
+			Add,
+			Remove,
+			Update
+		}
+		
 		public Operation operation;
 		public GameContainer game;
 	}

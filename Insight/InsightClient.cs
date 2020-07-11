@@ -1,20 +1,17 @@
 using Mirror;
 using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Assertions;
 
 namespace Insight {
 	public class InsightClient : InsightCommon {
-		private float _reconnectTimer;
 		private int _serverConnId;
+
+		private IEnumerator _reconnectCor;
 
 		public bool autoReconnect = true;
 		public float reconnectDelayInSeconds = 5f;
-
-		protected override void Update() {
-			base.Update();
-			CheckConnection();
-		}
 
 		protected override void RegisterHandlers() {
 			transport.OnClientConnected.AddListener(OnConnected);
@@ -26,7 +23,12 @@ namespace Insight {
 		public override void StartInsight() {
 			transport.ClientConnect(networkAddress);
 
-			_reconnectTimer = Time.realtimeSinceStartup + reconnectDelayInSeconds;
+			if(_reconnectCor != null) {
+				StopCoroutine(_reconnectCor);
+				_reconnectCor = null;
+			}
+			_reconnectCor = ReconnectCor();
+			StartCoroutine(_reconnectCor);
 		}
 
 		public override void StopInsight() {
@@ -35,6 +37,11 @@ namespace Insight {
 
 		private void OnConnected() {
 			Debug.Log($"[InsightClient] - Connecting to Insight Server: {networkAddress}");
+			
+			if(_reconnectCor != null) {
+				StopCoroutine(_reconnectCor);
+				_reconnectCor = null;
+			}
 			connectState = ConnectState.Connected;
 		}
 
@@ -53,17 +60,6 @@ namespace Insight {
 		private void OnError(Exception exception) {
 			// TODO Let's discuss how we will handle errors
 			Debug.LogException(exception);
-		}
-
-		private void CheckConnection() {
-			if (autoReconnect) {
-				if (!IsConnected && (_reconnectTimer < Time.time)) {
-					Debug.Log("[InsightClient] - Trying to reconnect...");
-
-					_reconnectTimer = Time.realtimeSinceStartup + reconnectDelayInSeconds;
-					StartInsight();
-				}
-			}
 		}
 
 		public void NetworkSend(InsightNetworkMessage netMsg, CallbackHandler callback = null) {
@@ -96,6 +92,16 @@ namespace Insight {
 			else {
 				InternalSend(insightMsg, callback);
 			}
+		}
+
+		private IEnumerator ReconnectCor() {
+			Assert.IsTrue(autoReconnect);
+			Assert.IsFalse(IsConnected);
+				
+			yield return new WaitForSeconds(reconnectDelayInSeconds);
+				
+			Debug.Log("[InsightClient] - Trying to reconnect...");
+			StartInsight();
 		}
 	}
 }

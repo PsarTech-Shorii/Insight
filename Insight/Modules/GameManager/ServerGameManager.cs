@@ -50,7 +50,7 @@ namespace Insight {
 				registeredGameServers.Remove(game);
 				foreach (var playerTemp in registeredPlayers) {
 					_server.NetworkSend(playerTemp.connectionId, new GameListStatusMsg {
-						operation = Operation.Remove,
+						operation = GameListStatusMsg.Operation.Remove,
 						game = game
 					});
 				}
@@ -78,7 +78,6 @@ namespace Insight {
 					uniqueId = message.uniqueId,
 					networkAddress = message.networkAddress,
 					networkPort = message.networkPort,
-					sceneName = message.sceneName,
 					gameName = message.gameName,
 					minPlayers = message.minPlayers,
 					maxPlayers = message.maxPlayers,
@@ -89,7 +88,7 @@ namespace Insight {
 
 				foreach (var playerTemp in registeredPlayers) {
 					_server.NetworkSend(playerTemp.connectionId, new GameListStatusMsg {
-						operation = Operation.Add,
+						operation = GameListStatusMsg.Operation.Add,
 						game = game
 					});
 				}
@@ -114,13 +113,14 @@ namespace Insight {
 					uniqueId = playerUniqueId
 				});
 
-				_server.NetworkReply(netMsg.connectionId, new InsightNetworkMessage(
+				var responseToSend = new InsightNetworkMessage(
 					new RegisterPlayerMsg {
 						uniqueId = playerUniqueId
 					}) {
 					callbackId = insightMsg.callbackId,
 					status = CallbackStatus.Success
-				});
+				};
+				_server.NetworkReply(netMsg.connectionId, responseToSend);
 			}
 			else {
 				Debug.LogError("[Server - GameManager] - Rejected (Internal) player registration");
@@ -138,7 +138,7 @@ namespace Insight {
 			
 			foreach (var playerTemp in registeredPlayers) {
 				_server.NetworkSend(playerTemp.connectionId, new GameListStatusMsg {
-					operation = Operation.Update,
+					operation = GameListStatusMsg.Operation.Update,
 					game = game
 				});
 			}
@@ -170,8 +170,7 @@ namespace Insight {
 
 			Debug.Log("[Server - GameManager] - Received player requesting game creation");
 
-			var requestSpawnStartMsg = new RequestSpawnStartMsg {
-				sceneName = message.sceneName,
+			var requestSpawnStartMsg = new RequestSpawnStartToMasterMsg {
 				gameName = message.gameName,
 				minPlayers = message.minPlayers
 			};
@@ -193,8 +192,7 @@ namespace Insight {
 							message = new InsightNetworkMessage(new ChangeServerMsg {
 								uniqueId = responseReceived.gameUniqueId,
 								networkAddress = responseReceived.networkAddress,
-								networkPort = responseReceived.networkPort,
-								sceneName = responseReceived.sceneName
+								networkPort = responseReceived.networkPort
 							}) {
 								callbackId = insightMsg.callbackId,
 								status = CallbackStatus.Success
@@ -241,8 +239,7 @@ namespace Insight {
 				var changeServerMsg = new ChangeServerMsg {
 					uniqueId = game.uniqueId,
 					networkAddress = game.networkAddress,
-					networkPort = game.networkPort,
-					sceneName = game.sceneName
+					networkPort = game.networkPort
 				};
 					
 				var responseToSend = new InsightNetworkMessage(changeServerMsg) {
@@ -314,8 +311,7 @@ namespace Insight {
 		public string uniqueId;
 		public string networkAddress;
 		public ushort networkPort;
-
-		public string sceneName;
+		
 		public string gameName;
 		public int minPlayers;
 		public int maxPlayers;

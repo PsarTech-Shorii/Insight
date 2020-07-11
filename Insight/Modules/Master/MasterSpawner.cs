@@ -22,7 +22,7 @@ namespace Insight {
 			_server.transport.OnServerDisconnected.AddListener(HandleDisconnect);
 
 			_server.RegisterHandler<RegisterSpawnerMsg>(HandleRegisterSpawnerMsg);
-			_server.RegisterHandler<RequestSpawnStartMsg>(HandleSpawnRequestMsg);
+			_server.RegisterHandler<RequestSpawnStartToMasterMsg>(HandleSpawnRequestMsg);
 			_server.RegisterHandler<SpawnerStatusMsg>(HandleSpawnerStatusMsg);
 		}
 
@@ -31,20 +31,26 @@ namespace Insight {
 		}
 
 		private void HandleRegisterSpawnerMsg(InsightMessage insightMsg) {
-			if (insightMsg is InsightNetworkMessage netMsg) {
-				var message = (RegisterSpawnerMsg) insightMsg.message;
+			var message = (RegisterSpawnerMsg) insightMsg.message;
 				
-				Debug.Log("[MasterSpawner] - Received process spawner registration");
+			Debug.Log("[MasterSpawner] - Received process spawner registration");
 
-				registeredSpawners.Add(new SpawnerContainer {
-					connectionId = netMsg.connectionId,
-					uniqueId = message.uniqueId,
-					maxThreads = message.maxThreads
-				});
-			}
-			else {
-				Debug.Log("[MasterSpawner] - Rejected (Internal) process spawner registration");
-			}
+			var connectionId = insightMsg is InsightNetworkMessage netMsg ? netMsg.connectionId : 0;
+			var uniqueId = Guid.NewGuid().ToString();
+			var responseToSend = new InsightNetworkMessage(
+				new RegisterSpawnerMsg {
+					uniqueId = uniqueId
+				}) {
+				callbackId = insightMsg.callbackId,
+				status = CallbackStatus.Success
+			};
+			ReplyToSpawner(connectionId, responseToSend);
+			
+			registeredSpawners.Add(new SpawnerContainer {
+				connectionId = connectionId,
+				uniqueId = uniqueId,
+				maxThreads = message.maxThreads
+			});
 		}
 
 		//Instead of handling the msg here we will forward it to an available spawner.
@@ -54,9 +60,8 @@ namespace Insight {
 				return;
 			}
 
-			var message = (RequestSpawnStartMsg) insightMsg.message;
-			message.spawnerUniqueId = Guid.NewGuid().ToString();
-			
+			var message = (RequestSpawnStartToMasterMsg) insightMsg.message;
+
 			Debug.Log("[MasterSpawner] - Received requesting game creation");
 
 			//Get all spawners that have atleast 1 slot free
@@ -64,7 +69,7 @@ namespace Insight {
 
 			//sort by least busy spawner first
 			freeSlotSpawners = freeSlotSpawners.OrderBy(x => x.currentThreads).ToList();
-			_server.NetworkSend(freeSlotSpawners[0].connectionId, message, callbackMsg => {
+			SendToSpawner(freeSlotSpawners[0].connectionId, message, callbackMsg => {
 				Debug.Log($"[MasterSpawner] - Game creation on child spawner : {callbackMsg.status}");
 
 				if (insightMsg.callbackId != 0) {
@@ -80,7 +85,7 @@ namespace Insight {
 					}
 				}
 			});
-			}
+		}
 
 		private void HandleSpawnerStatusMsg(InsightMessage insightMsg) {
 			var message = (SpawnerStatusMsg) insightMsg.message;
@@ -90,6 +95,17 @@ namespace Insight {
 			var spawner = registeredSpawners.Find(e => e.uniqueId == message.uniqueId);
 			Assert.IsNotNull(spawner);
 			spawner.currentThreads = message.currentThreads;
+		}
+
+		private void SendToSpawner(int connectionId, RequestSpawnStartMsg msg, CallbackHandler callback = null) {
+			var message = new RequestSpawnStartToSpawnerMsg(msg);
+			if(connectionId == 0) _server.InternalSend(message, callback);
+			else _server.NetworkSend(connectionId, message, callback);
+		}
+
+		private void ReplyToSpawner(int connectionId, InsightNetworkMessage netMsg) {
+			if(connectionId == 0) _server.InternalReply(netMsg);
+			else _server.NetworkReply(connectionId, netMsg);
 		}
 	}
 

@@ -50,14 +50,16 @@ namespace Insight {
 			var playersRatio = 0f;
 			var gameUniqueId = "";
 
-			Assert.IsFalse(_gameModule.registeredGameServers.Count == 0);
-			
 			foreach (var game in _gameModule.registeredGameServers) {
-				if (game.currentPlayers / (float) game.minPlayers >= playersRatio) {
-					playersRatio = game.currentPlayers / (float) game.minPlayers;
+				var playersRatioTemp = game.currentPlayers / (float) game.minPlayers;
+				
+				if (playersRatioTemp >= playersRatio && game.currentPlayers < game.maxPlayers) {
+					playersRatio = playersRatioTemp;
 					gameUniqueId = game.uniqueId;
 				}
 			}
+			
+			Assert.IsFalse(string.IsNullOrEmpty(gameUniqueId));
 
 			return gameUniqueId;
 		}
