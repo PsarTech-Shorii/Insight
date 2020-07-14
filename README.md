@@ -1,9 +1,9 @@
-### MazeTer
+# MazeTer
 **MazeTer** is a [**Insight**](https://github.com/uweenukr/Insight) fork  
 
-### Requirements:
+## Requirements:
+[Unity](https://unity.com/fr)  
 [Mirror](https://github.com/vis2k/Mirror)  
-[Unity](https://unity.com/fr): 2018.3.6+  
 
-### Examples:
-[Only Gane](https://github.com/PsarTech-Shorii/Only-Gane) : Online game template for Unity using MazeTer and Mirror  
+## Examples:
+[Only-Gane](https://github.com/PsarTech-Shorii/Only-Gane) : Online game template using MazeTer and Mirror  
