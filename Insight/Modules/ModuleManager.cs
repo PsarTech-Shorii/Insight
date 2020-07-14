@@ -12,8 +12,6 @@ namespace Insight {
 		private readonly Dictionary<Type, InsightModule> modules = new Dictionary<Type, InsightModule>();
 		private readonly HashSet<Type> initializedModules = new HashSet<Type>();
 
-		private bool wasInitialized;
-
 		private void Awake() {
 			server = GetComponent<InsightServer>();
 			client = GetComponent<InsightClient>();
