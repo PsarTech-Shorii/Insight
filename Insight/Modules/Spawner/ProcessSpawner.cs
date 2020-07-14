@@ -3,15 +3,16 @@ using System.Diagnostics;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Assertions;
+using UnityEngine.Events;
 using Debug = UnityEngine.Debug;
 
 namespace Insight {
 	public class ProcessSpawner : InsightModule {
-		private InsightServer _server;
-		private InsightClient _client;
-		private RunningProcessContainer[] _spawnerProcesses;
-		private bool _registrationComplete;
-		private string _uniqueId;
+		private InsightServer server;
+		private InsightClient client;
+
+		private string uniqueId;
+		private RunningProcessContainer[] spawnerProcesses;
 
 		private const string Space = " ";
 
@@ -30,24 +31,26 @@ namespace Insight {
 		[Header("Threads")]
 		public int maximumProcesses = 5;
 
-		public override void Initialize(InsightServer server, ModuleManager manager) {
-			_server = server;
-			
+		public override void Initialize(InsightServer _server, ModuleManager _manager) {
 			Debug.Log("[Server - ProcessSpawner] - Initialization");
-			
+			server = _server;
+
 			RegisterHandlers();
+			
+			RegisterSpawner();
 		}
 
-		public override void Initialize(InsightClient client, ModuleManager manager) {
-			_client = client;
-			
+		public override void Initialize(InsightClient _client, ModuleManager _manager) {
 			Debug.Log("[Client - ProcessSpawner] - Initialization");
+			client = _client;
+			
+			StartClientWith(RegisterSpawner);
 			
 			RegisterHandlers();
 		}
 
 		private void Awake() {
-			_spawnerProcesses = new RunningProcessContainer[maximumProcesses];
+			spawnerProcesses = new RunningProcessContainer[maximumProcesses];
 		}
 
 		private void Start() {
@@ -55,29 +58,42 @@ namespace Insight {
 			processPath = editorPath;
 #endif
 			
-			for (var i = 0; i < _spawnerProcesses.Length; i++) {
-				_spawnerProcesses[i] = new RunningProcessContainer();
+			for (var i = 0; i < spawnerProcesses.Length; i++) {
+				spawnerProcesses[i] = new RunningProcessContainer();
 			}
 		}
 
 		private void RegisterHandlers() {
-			if (_client) {
-				_client.transport.OnClientConnected.AddListener(RegisterSpawner);
+			if (client) {
+				client.OnDisconnected += HandleDisconnect;
 				
-				_client.RegisterHandler<RequestSpawnStartToSpawnerMsg>(HandleRequestSpawnStart);
-				_client.RegisterHandler<KillSpawnMsg>(HandleKillSpawn);
+				client.RegisterHandler<RequestSpawnStartToSpawnerMsg>(HandleRequestSpawnStart);
+				client.RegisterHandler<KillSpawnMsg>(HandleKillSpawn);
 			}
 
-			if (_server) {
-				RegisterSpawner();
-				
-				_server.RegisterHandler<RequestSpawnStartToSpawnerMsg>(HandleRequestSpawnStart);
-				_server.RegisterHandler<KillSpawnMsg>(HandleKillSpawn);
+			if (server) {
+				server.RegisterHandler<RequestSpawnStartToSpawnerMsg>(HandleRequestSpawnStart);
+				server.RegisterHandler<KillSpawnMsg>(HandleKillSpawn);
+			}
+		}
+		
+		private void StartClientWith(ConnectionDelegate _handler) {
+			if (client.IsConnected) {
+				_handler.Invoke();
+			}
+			
+			client.OnConnected += _handler;
+		}
+
+		private void HandleDisconnect() {
+			uniqueId = null;
+			foreach (var runningProcess in spawnerProcesses) {
+				runningProcess.process.Kill();
 			}
 		}
 
-		private void HandleRequestSpawnStart(InsightMessage insightMsg) {
-			var message = (RequestSpawnStartToSpawnerMsg) insightMsg.message;
+		private void HandleRequestSpawnStart(InsightMessage _insightMsg) {
+			var message = (RequestSpawnStartToSpawnerMsg) _insightMsg.message;
 
 			Debug.Log("[ProcessSpawner] - Received requesting game creation");
 
@@ -113,11 +129,11 @@ namespace Insight {
 					process.Exited += OnProcessExited;
 
 					Send(new SpawnerStatusMsg {
-						uniqueId = _uniqueId,
+						uniqueId = uniqueId,
 						currentThreads = GetRunningProcessCount()
 					});
 
-					_spawnerProcesses[thisPort] = new RunningProcessContainer {
+					spawnerProcesses[thisPort] = new RunningProcessContainer {
 						process = process,
 						uniqueId = message.gameUniqueId
 					};
@@ -126,7 +142,7 @@ namespace Insight {
 				}
 			}
 
-			if (insightMsg.callbackId != 0) {
+			if (_insightMsg.callbackId != 0) {
 				if (successful) {
 					var requestSpawnStartMsg = new RequestSpawnStartToSpawnerMsg {
 						gameUniqueId = message.gameUniqueId,
@@ -135,14 +151,14 @@ namespace Insight {
 					};
 
 					var responseToSend = new InsightNetworkMessage(requestSpawnStartMsg) {
-						callbackId = insightMsg.callbackId,
+						callbackId = _insightMsg.callbackId,
 						status = CallbackStatus.Success
 					};
 					Reply(responseToSend);
 				}
 				else {
 					var responseToSend = new InsightNetworkMessage(new RequestSpawnStartToSpawnerMsg()) {
-						callbackId = insightMsg.callbackId,
+						callbackId = _insightMsg.callbackId,
 						status = CallbackStatus.Error
 					};
 					Reply(responseToSend);
@@ -150,22 +166,19 @@ namespace Insight {
 			}
 		}
 
-		private void OnProcessExited(object sender, EventArgs eventArgs) {
-			var process = (Process) sender;
-			var spawner = _spawnerProcesses.First(e => e.process == process);
+		private void OnProcessExited(object _sender, EventArgs _eventArgs) {
+			var process = (Process) _sender;
+			var spawner = spawnerProcesses.First(_e => _e.process == process);
 			spawner.process = null;
 			spawner.uniqueId = "";
 
 			Debug.Log("[ProcessSpawner] Removing process that has exited");
 		}
 		
-		private void HandleKillSpawn(InsightMessage insightMsg) {
-			var message = (KillSpawnMsg) insightMsg.message;
+		private void HandleKillSpawn(InsightMessage _insightMsg) {
+			var message = (KillSpawnMsg) _insightMsg.message;
 
-			var spawner = _spawnerProcesses.First(e => e.uniqueId == message.uniqueId);
-			spawner.process.Kill();
-			spawner.process = null;
-			spawner.uniqueId = "";
+			spawnerProcesses.First(_e => _e.uniqueId == message.uniqueId).process.Kill();
 		}
 
         private void RegisterSpawner() {
@@ -173,15 +186,15 @@ namespace Insight {
 	        
 	        Send(new RegisterSpawnerMsg {
 		        maxThreads = maximumProcesses
-	        }, callbackMsg => {
-		        Debug.Log($"[ProcessSpawner] - Received registration : {callbackMsg.status}");
+	        }, _callbackMsg => {
+		        Debug.Log($"[ProcessSpawner] - Received registration : {_callbackMsg.status}");
 		        
-		        Assert.AreNotEqual(CallbackStatus.Default, callbackMsg.status);
-		        switch (callbackMsg.status) {
+		        Assert.AreNotEqual(CallbackStatus.Default, _callbackMsg.status);
+		        switch (_callbackMsg.status) {
 			        case CallbackStatus.Success: {
-				        var responseReceived = (RegisterSpawnerMsg) callbackMsg.message;
+				        var responseReceived = (RegisterSpawnerMsg) _callbackMsg.message;
 
-				        _uniqueId = responseReceived.uniqueId;
+				        uniqueId = responseReceived.uniqueId;
 
 				        break;
 			        }
@@ -194,35 +207,35 @@ namespace Insight {
 	        });
 		}
 
-        private void Send(InsightMessageBase msg, CallbackHandler callback = null) {
-	        if (_client) {
-		        _client.NetworkSend(msg, callback);
+        private void Send(InsightMessageBase _message, CallbackHandler _callback = null) {
+	        if (client) {
+		        client.NetworkSend(_message, _callback);
 		        return;
 	        }
 
-	        if (_server) {
-		        _server.InternalSend(msg, callback);
+	        if (server) {
+		        server.InternalSend(_message, _callback);
 		        return;
 	        }
 	        Debug.LogError("[ProcessSpawner] - Not initialized");
         }
 
-        private void Reply(InsightMessage insightMsg) {
-	        if (_client) {
-		        _client.NetworkReply((InsightNetworkMessage) insightMsg);
+        private void Reply(InsightMessage _insightMsg) {
+	        if (client) {
+		        client.NetworkReply((InsightNetworkMessage) _insightMsg);
 		        return;
 	        }
 
-	        if (_server) {
-		        _server.InternalReply(insightMsg);
+	        if (server) {
+		        server.InternalReply(_insightMsg);
 		        return;
 	        }
 	        Debug.LogError("[ProcessSpawner] - Not initialized");
         }
 
         private int GetPort() {
-			for (var i = 0; i < _spawnerProcesses.Length; i++) {
-				if (_spawnerProcesses[i].process == null) {
+			for (var i = 0; i < spawnerProcesses.Length; i++) {
+				if (spawnerProcesses[i].process == null) {
 					return i;
 				}
 			}
@@ -232,7 +245,7 @@ namespace Insight {
 		}
 
         private int GetRunningProcessCount() {
-			return _spawnerProcesses.Count(e => e.process != null);
+			return spawnerProcesses.Count(_e => _e.process != null);
         }
 
         private static string ArgsString() {

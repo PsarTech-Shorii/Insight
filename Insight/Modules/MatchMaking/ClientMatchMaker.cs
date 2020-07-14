@@ -3,29 +3,26 @@ using UnityEngine.Assertions;
 
 namespace Insight {
 	public class ClientMatchMaker : InsightModule {
-		private InsightClient _client;
-		private ClientGameManager _gameModule;
+		private InsightClient client;
+		private GameClientManager gameModule;
 
 		private void Awake() {
-			AddDependency<ClientGameManager>();
+			AddDependency<GameClientManager>();
 		}
 		
-		public override void Initialize(InsightClient client, ModuleManager manager) {
-			_client = client;
+		public override void Initialize(InsightClient _client, ModuleManager _manager) {
+			Debug.Log("[Client - MatchMaker] - Initialization");
+			client = _client;
 			
-			_gameModule = manager.GetModule<ClientGameManager>();
-
-			RegisterHandlers();
+			gameModule = _manager.GetModule<GameClientManager>();
 		}
 
-		private void RegisterHandlers() {}
-
 		public void MatchGame() {
-			Assert.IsTrue(_client.IsConnected);
+			Assert.IsTrue(client.IsConnected);
 			Debug.Log("[Client - MatchMaker] - Match game"); 
 			
-			_client.NetworkSend(new MatchGameMsg {uniqueId = _gameModule.uniqueId}, 
-				callbackMsg => _client.InternalSend(callbackMsg.message));
+			client.NetworkSend(new MatchGameMsg {uniqueId = gameModule.uniqueId}, 
+				_callbackMsg => client.InternalSend(_callbackMsg.message));
 		}
 	}
 }

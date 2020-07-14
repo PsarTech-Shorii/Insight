@@ -3,44 +3,45 @@ using UnityEngine.Assertions;
 
 namespace Insight {
 	public class ServerMatchMaker : InsightModule {
-		private InsightServer _server;
-		private ServerGameManager _gameModule;
+		private InsightServer server;
+		private GameMasterManager gameModule;
 
 		private void Awake() {
-			AddDependency<ServerGameManager>();
+			AddDependency<GameMasterManager>();
 		}
 
-		public override void Initialize(InsightServer server, ModuleManager manager) {
-			_server = server;
+		public override void Initialize(InsightServer _server, ModuleManager _manager) {
+			Debug.Log("[Server - MatchMaker] - Initialization");
+			server = _server;
 			
-			_gameModule = manager.GetModule<ServerGameManager>();
+			gameModule = _manager.GetModule<GameMasterManager>();
 			
 			RegisterHandlers();
 		}
 
 		private void RegisterHandlers() {
-			_server.RegisterHandler<MatchGameMsg>(HandleMatchGameMsg);
+			server.RegisterHandler<MatchGameMsg>(HandleMatchGameMsg);
 		}
 
-		private void HandleMatchGameMsg(InsightMessage insightMsg) {
-			var message = (MatchGameMsg) insightMsg.message;
+		private void HandleMatchGameMsg(InsightMessage _insightMsg) {
+			var message = (MatchGameMsg) _insightMsg.message;
 			
 			Debug.Log("[Server - MatchMaker] - Received requesting match game");
 			
-			_server.InternalSend(new JoinGameMsg {
+			server.InternalSend(new JoinGameMsg {
 				uniqueId = message.uniqueId,
 				gameUniqueId = GetFastestGame()
-			}, callbackMsg => {
-				if (insightMsg.callbackId != 0) {
-					var responseToSend = new InsightNetworkMessage(callbackMsg) {
-						callbackId = insightMsg.callbackId
+			}, _callbackMsg => {
+				if (_insightMsg.callbackId != 0) {
+					var responseToSend = new InsightNetworkMessage(_callbackMsg) {
+						callbackId = _insightMsg.callbackId
 					};
 
-					if (insightMsg is InsightNetworkMessage netMsg) {
-						_server.NetworkReply(netMsg.connectionId, responseToSend);
+					if (_insightMsg is InsightNetworkMessage netMsg) {
+						server.NetworkReply(netMsg.connectionId, responseToSend);
 					}
 					else {
-						_server.InternalReply(responseToSend);
+						server.InternalReply(responseToSend);
 					}
 				}
 			});
@@ -50,7 +51,7 @@ namespace Insight {
 			var playersRatio = 0f;
 			var gameUniqueId = "";
 
-			foreach (var game in _gameModule.registeredGameServers) {
+			foreach (var game in gameModule.registeredGameServers) {
 				var playersRatioTemp = game.currentPlayers / (float) game.minPlayers;
 				
 				if (playersRatioTemp >= playersRatio && game.currentPlayers < game.maxPlayers) {

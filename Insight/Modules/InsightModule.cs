@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using UnityEngine;
 
 namespace Insight {
-	public delegate void ReceiveMessageEvent(InsightMessageBase message);
-	public delegate void ReceiveResponseEvent(InsightMessageBase callbackMsg, CallbackStatus status);
+	public delegate void ReceiveMessageEvent(InsightMessageBase _message);
+	public delegate void ReceiveResponseEvent(InsightMessageBase _callbackMsg, CallbackStatus _status);
 	
 	public abstract class InsightModule : MonoBehaviour {
-		private static Dictionary<Type, GameObject> _instances;
+		private static Dictionary<Type, GameObject> instances;
 
-		private readonly List<Type> _dependencies = new List<Type>();
-		private readonly List<Type> _optionalDependencies = new List<Type>();
+		private readonly List<Type> dependencies = new List<Type>();
+		private readonly List<Type> optionalDependencies = new List<Type>();
 		
 		public event ReceiveMessageEvent OnReceiveMessage;
 		public event ReceiveResponseEvent OnReceiveResponse;
@@ -18,17 +18,17 @@ namespace Insight {
 		/// <summary>
 		///     Returns a list of module types this module depends on
 		/// </summary>
-		public IEnumerable<Type> Dependencies => _dependencies;
-		public IEnumerable<Type> OptionalDependencies => _optionalDependencies;
+		public IEnumerable<Type> Dependencies => dependencies;
+		public IEnumerable<Type> OptionalDependencies => optionalDependencies;
 
 		/// <summary>
 		///     Called by master server, when module should be started
 		/// </summary>
-		public virtual void Initialize(InsightServer server, ModuleManager manager) {
+		public virtual void Initialize(InsightServer _server, ModuleManager _manager) {
 			Debug.LogWarning("[Module Manager] Initialize InsightServer not found for module");
 		}
 
-		public virtual void Initialize(InsightClient client, ModuleManager manager) {
+		public virtual void Initialize(InsightClient _client, ModuleManager _manager) {
 			Debug.LogWarning("[Module Manager] Initialize InsightClient not found for module");
 		}
 
@@ -38,19 +38,19 @@ namespace Insight {
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		protected void AddDependency<T>() {
-			_dependencies.Add(typeof(T));
+			dependencies.Add(typeof(T));
 		}
 
 		protected void AddOptionalDependency<T>() {
-			_optionalDependencies.Add(typeof(T));
+			optionalDependencies.Add(typeof(T));
 		}
 
-		protected void ReceiveMessage(InsightMessageBase message) {
-			OnReceiveMessage?.Invoke(message);
+		protected void ReceiveMessage(InsightMessageBase _message) {
+			OnReceiveMessage?.Invoke(_message);
 		}
 
-		protected void ReceiveResponse(InsightMessageBase callbackMsg, CallbackStatus status) {
-			OnReceiveResponse?.Invoke(callbackMsg, status);
+		protected void ReceiveResponse(InsightMessageBase _callbackMsg, CallbackStatus _status) {
+			OnReceiveResponse?.Invoke(_callbackMsg, _status);
 		}
 	}
 }

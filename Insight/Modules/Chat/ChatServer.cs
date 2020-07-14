@@ -2,52 +2,53 @@
 
 namespace Insight {
 	public class ChatServer : InsightModule {
-		private InsightServer _server;
-		private ServerAuthentication _authModule;
-		private ServerGameManager _gameModule;
+		private InsightServer server;
+		private ServerAuthentication authModule;
+		private GameMasterManager gameModule;
 		
 
 		public void Awake() {
 			AddDependency<ServerAuthentication>();
-			AddOptionalDependency<ServerGameManager>();
+			AddOptionalDependency<GameMasterManager>();
 		}
 
-		public override void Initialize(InsightServer server, ModuleManager manager) {
-			_server = server;
+		public override void Initialize(InsightServer _server, ModuleManager _manager) {
+			Debug.Log("[Server - Chat] - Initialization");
+			server = _server;
 
-			_authModule = manager.GetModule<ServerAuthentication>();
-			_gameModule = manager.GetModule<ServerGameManager>();
+			authModule = _manager.GetModule<ServerAuthentication>();
+			gameModule = _manager.GetModule<GameMasterManager>();
 
 			RegisterHandlers();
 		}
 
 		private void RegisterHandlers() {
-			_server.RegisterHandler<ChatMsg>(HandleChatMsg);
+			server.RegisterHandler<ChatMsg>(HandleChatMsg);
 		}
 
-		private void HandleChatMsg(InsightMessage insightMsg) {
-			if (insightMsg is InsightNetworkMessage netMsg) {
-				var message = (ChatMsg) insightMsg.message;
+		private void HandleChatMsg(InsightMessage _insightMsg) {
+			if (_insightMsg is InsightNetworkMessage netMsg) {
+				var message = (ChatMsg) _insightMsg.message;
 				
-				Debug.Log("[ChatServer] - Received Chat Message.");
+				Debug.Log("[Server - Chat] - Received Chat Message.");
 
 				//Inject the username into the message
-				message.username = _authModule.registeredUsers.Find(e => e.connectionId == netMsg.connectionId)
+				message.username = authModule.registeredUsers.Find(_e => _e.connectionId == netMsg.connectionId)
 					.username;
 
-				if (_gameModule != null) {
-					foreach (var playerConnId in _gameModule.GetPlayersInGame(netMsg.connectionId)) {
-						_server.NetworkSend(playerConnId, message);
+				if (gameModule != null) {
+					foreach (var playerConnId in gameModule.GetPlayersInGame(netMsg.connectionId)) {
+						server.NetworkSend(playerConnId, message);
 					}
 				}
 				else {
-					foreach (var user in _authModule.registeredUsers) {
-						_server.NetworkSend(user.connectionId, message);
+					foreach (var user in authModule.registeredUsers) {
+						server.NetworkSend(user.connectionId, message);
 					}
 				}
 			}
 			else {
-				Debug.Log("[ChatServer] - Rejected (Internal) Chat Message.");
+				Debug.Log("[Server - Chat] - Rejected (Internal) Chat Message.");
 			}
 		}
 	}

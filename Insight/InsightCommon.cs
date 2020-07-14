@@ -19,23 +19,24 @@ namespace Insight {
 		Disconnected,
 	}
 
-	public delegate void InsightMessageDelegate(InsightMessage insightMsg);
-	public delegate void CallbackHandler(InsightMessage insightMsg);
+	public delegate void InsightMessageDelegate(InsightMessage _insightMsg);
+	public delegate void CallbackHandler(InsightMessage _insightMsg);
 
+	[RequireComponent(typeof(Transport))]
 	public abstract class InsightCommon : MonoBehaviour {
-		private class CallbackData {
+		private struct CallbackData {
 			public CallbackHandler callback;
 			public IEnumerator expirationCor;
 		}
 
 		private const float CallbackTimeout = 30f;
 
-		private int _callbackIdIndex; // 0 is a _special_ id - it represents _no callback_. 
-		private readonly List<int> _expiredCallback = new List<int>();
-		private readonly Dictionary<Type, InsightMessageDelegate> _messageHandlers =
+		private int callbackIdIndex; // 0 is a _special_ id - it represents _no callback_. 
+		private readonly List<int> expiredCallback = new List<int>();
+		private readonly Dictionary<Type, InsightMessageDelegate> messageHandlers =
 			new Dictionary<Type, InsightMessageDelegate>();
 
-		private readonly Dictionary<int, CallbackData> _callbacks = new Dictionary<int, CallbackData>();
+		private readonly Dictionary<int, CallbackData> callbacks = new Dictionary<int, CallbackData>();
 
 		public Transport transport;
 		
@@ -44,7 +45,10 @@ namespace Insight {
 		public string networkAddress = "localhost";
 
 		[HideInInspector] public ConnectState connectState = ConnectState.None;
-		public bool IsConnected => connectState == ConnectState.Connected;
+		public virtual bool IsConnected {
+			get => connectState == ConnectState.Connected;
+			protected set => connectState = value ? ConnectState.Connected : ConnectState.Disconnected;
+		}
 
 		private void OnValidate() {
 			// add transport if there is none yet. makes upgrading easier.
@@ -52,7 +56,7 @@ namespace Insight {
 				transport = GetComponent<Transport>();
 				if (transport == null) {
 					transport = gameObject.AddComponent<TelepathyTransport>();
-					Debug.Log("NetworkManager: added default Transport because there was none yet.");
+					Debug.Log("InsightCommon: added default Transport because there was none yet.");
 				}
 #if UNITY_EDITOR
 				UnityEditor.Undo.RecordObject(gameObject, "Added default Transport");
@@ -74,89 +78,89 @@ namespace Insight {
 			StopInsight();
 		}
 
-		public void RegisterHandler<T>(InsightMessageDelegate handler) {
-			if (_messageHandlers.ContainsKey(typeof(T))) {
+		public void RegisterHandler<T>(InsightMessageDelegate _handler) {
+			if (messageHandlers.ContainsKey(typeof(T))) {
 				Debug.Log($"NetworkConnection.RegisterHandler replacing {typeof(T)}");
 			}
 
-			_messageHandlers.Add(typeof(T), handler);
+			messageHandlers.Add(typeof(T), _handler);
 		}
 
-		public void UnregisterHandler<T>(InsightMessageDelegate handler) {
-			if (_messageHandlers.TryGetValue(typeof(T), out var handlerValue)) {
-				if (handlerValue == handler) _messageHandlers.Remove(typeof(T));
+		public void UnregisterHandler<T>(InsightMessageDelegate _handler) {
+			if (messageHandlers.TryGetValue(typeof(T), out var handlerValue)) {
+				if (handlerValue == _handler) messageHandlers.Remove(typeof(T));
 			}
 		}
 
 		public void ClearHandlers() {
-			_messageHandlers.Clear();
+			messageHandlers.Clear();
 		}
 
-		protected void RegisterCallback(InsightMessage insightMsg, CallbackHandler callback = null) {
+		protected void RegisterCallback(InsightMessage _insightMsg, CallbackHandler _callback = null) {
 			var callbackId = 0;
-			if (callback != null) {
-				callbackId = ++_callbackIdIndex;
+			if (_callback != null) {
+				callbackId = ++callbackIdIndex;
 				var callbackData = new CallbackData {
-					callback = callback,
-					expirationCor = ExpireCallbackCor(callbackId, insightMsg, callback)
+					callback = _callback,
+					expirationCor = ExpireCallbackCor(callbackId, _insightMsg, _callback)
 				};
 				
-				_callbacks.Add(callbackId, callbackData);
+				callbacks.Add(callbackId, callbackData);
 				StartCoroutine(callbackData.expirationCor);
 			}
 
-			insightMsg.callbackId = callbackId;
+			_insightMsg.callbackId = callbackId;
 		}
 
-		protected void HandleMessage(InsightMessage insightMsg) {
-			if (_expiredCallback.Contains(insightMsg.callbackId)) {
-				_expiredCallback.Remove(insightMsg.callbackId);
+		protected void HandleMessage(InsightMessage _insightMsg) {
+			if (expiredCallback.Contains(_insightMsg.callbackId)) {
+				expiredCallback.Remove(_insightMsg.callbackId);
 			}
-			else if (_callbacks.ContainsKey(insightMsg.callbackId) && insightMsg.status != CallbackStatus.Default) {
-				var callbackData = _callbacks[insightMsg.callbackId];
+			else if (callbacks.ContainsKey(_insightMsg.callbackId) && _insightMsg.status != CallbackStatus.Default) {
+				var callbackData = callbacks[_insightMsg.callbackId];
 				
 				Assert.IsNotNull(callbackData.expirationCor);
 				StopCoroutine(callbackData.expirationCor);
 				
-				callbackData.callback.Invoke(insightMsg);
+				callbackData.callback.Invoke(_insightMsg);
 				
-				_callbacks.Remove(insightMsg.callbackId);
+				callbacks.Remove(_insightMsg.callbackId);
 			}
 			else {
-				if (_messageHandlers.TryGetValue(insightMsg.MsgType, out var msgDelegate)) msgDelegate(insightMsg);
+				if (messageHandlers.TryGetValue(_insightMsg.MsgType, out var msgDelegate)) msgDelegate(_insightMsg);
 				else {
 					//NOTE: this throws away the rest of the buffer. Need more error codes
-					Debug.LogError($"Unknown message {insightMsg.MsgType}");
+					Debug.LogError($"Unknown message {_insightMsg.MsgType}");
 				}
 			}
 		}
 
-		public void InternalSend(InsightMessage insightMsg, CallbackHandler callback = null) {
-			if(insightMsg.callbackId == 0) RegisterCallback(insightMsg, callback);
-			HandleMessage(insightMsg);
+		public void InternalSend(InsightMessage _insightMsg, CallbackHandler _callback = null) {
+			if(_insightMsg.callbackId == 0) RegisterCallback(_insightMsg, _callback);
+			HandleMessage(_insightMsg);
 		}
 
-		public void InternalSend(InsightMessageBase msg, CallbackHandler callback = null) {
-			InternalSend(new InsightMessage(msg), callback);
+		public void InternalSend(InsightMessageBase _message, CallbackHandler _callback = null) {
+			InternalSend(new InsightMessage(_message), _callback);
 		}
 
-		public void InternalReply(InsightMessage insightMsg) {
-			Assert.AreNotEqual(CallbackStatus.Default, insightMsg.status);
-			InternalSend(insightMsg);
+		public void InternalReply(InsightMessage _insightMsg) {
+			Assert.AreNotEqual(CallbackStatus.Default, _insightMsg.status);
+			InternalSend(_insightMsg);
 		}
 
-		private IEnumerator ExpireCallbackCor(int callbackId, InsightMessage insightMsg, CallbackHandler callback) {
+		private IEnumerator ExpireCallbackCor(int _callbackId, InsightMessage _insightMsg, CallbackHandler _callback) {
 			yield return new WaitForSeconds(CallbackTimeout);
 			
-			_expiredCallback.Add(callbackId);
-			callback.Invoke(new InsightMessage(new EmptyMessage()) {
+			expiredCallback.Add(_callbackId);
+			_callback.Invoke(new InsightMessage(new EmptyMessage()) {
 				status = CallbackStatus.Timeout
 			});
-			Resend(insightMsg, callback);
-			_callbacks.Remove(callbackId);
+			Resend(_insightMsg, _callback);
+			callbacks.Remove(_callbackId);
 		}
 
-		protected abstract void Resend(InsightMessage insightMsg, CallbackHandler callback);
+		protected abstract void Resend(InsightMessage _insightMsg, CallbackHandler _callback);
 		protected abstract void RegisterHandlers();
 		public abstract void StartInsight();
 		public abstract void StopInsight();

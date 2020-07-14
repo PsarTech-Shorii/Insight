@@ -17,31 +17,31 @@ namespace Insight {
 			message = new EmptyMessage();
 		}
 
-		public InsightMessage(InsightMessage insightMsg) {
-			status = insightMsg.status;
-			message = insightMsg.message;
+		public InsightMessage(InsightMessage _insightMsg) {
+			status = _insightMsg.status;
+			message = _insightMsg.message;
 		}
 
-		public InsightMessage(InsightMessageBase msg) {
-			message = msg;
+		public InsightMessage(InsightMessageBase _message) {
+			message = _message;
 		}
 
-		public override void Deserialize(NetworkReader reader) {
-			base.Deserialize(reader);
-			callbackId = reader.ReadInt32();
-			status = (CallbackStatus) reader.ReadByte();
-			var msgType = Type.GetType(reader.ReadString());
+		public override void Deserialize(NetworkReader _reader) {
+			base.Deserialize(_reader);
+			callbackId = _reader.ReadInt32();
+			status = (CallbackStatus) _reader.ReadByte();
+			var msgType = Type.GetType(_reader.ReadString());
 			Assert.IsNotNull(msgType);
 			message = (InsightMessageBase) Activator.CreateInstance(msgType);
-			message.Deserialize(reader);
+			message.Deserialize(_reader);
 		}
 
-		public override void Serialize(NetworkWriter writer) {
-			base.Serialize(writer);
-			writer.WriteInt32(callbackId);
-			writer.WriteByte((byte) status);
-			writer.WriteString(MsgType.FullName);
-			message.Serialize(writer);
+		public override void Serialize(NetworkWriter _writer) {
+			base.Serialize(_writer);
+			_writer.WriteInt32(callbackId);
+			_writer.WriteByte((byte) status);
+			_writer.WriteString(MsgType.FullName);
+			message.Serialize(_writer);
 		}
 	}
 
@@ -50,8 +50,8 @@ namespace Insight {
 		
 		public InsightNetworkMessage() {}
 
-		public InsightNetworkMessage(InsightMessageBase msg) : base(msg) {}
-		public InsightNetworkMessage(InsightMessage insightMsg) : base(insightMsg) {}
+		public InsightNetworkMessage(InsightMessageBase _message) : base(_message) {}
+		public InsightNetworkMessage(InsightMessage _insightMsg) : base(_insightMsg) {}
 	}
 	
 	public class EmptyMessage : InsightMessageBase {}
@@ -77,23 +77,23 @@ namespace Insight {
 
 		protected RequestSpawnStartMsg() {}
 
-		protected RequestSpawnStartMsg(RequestSpawnStartMsg original) {
-			gameUniqueId = original.gameUniqueId;
-			networkAddress = original.networkAddress;
-			networkPort = original.networkPort;
-			gameName = original.gameName;
-			minPlayers = original.minPlayers;
+		protected RequestSpawnStartMsg(RequestSpawnStartMsg _original) {
+			gameUniqueId = _original.gameUniqueId;
+			networkAddress = _original.networkAddress;
+			networkPort = _original.networkPort;
+			gameName = _original.gameName;
+			minPlayers = _original.minPlayers;
 		}
 	}
 
 	public class RequestSpawnStartToMasterMsg : RequestSpawnStartMsg {
 		public RequestSpawnStartToMasterMsg() {}
-		public RequestSpawnStartToMasterMsg(RequestSpawnStartMsg original) : base(original) {}
+		public RequestSpawnStartToMasterMsg(RequestSpawnStartMsg _original) : base(_original) {}
 	}
 
 	public class RequestSpawnStartToSpawnerMsg : RequestSpawnStartMsg {
 		public RequestSpawnStartToSpawnerMsg() {}
-		public RequestSpawnStartToSpawnerMsg(RequestSpawnStartMsg original) : base(original) {}
+		public RequestSpawnStartToSpawnerMsg(RequestSpawnStartMsg _original) : base(_original) {}
 	}
 
 	public class KillSpawnMsg : InsightMessageBase {
@@ -148,8 +148,8 @@ namespace Insight {
 	public class GameListMsg : InsightMessageBase {
 		public GameContainer[] gamesArray;
 
-		public void Load(List<GameContainer> gamesList) {
-			gamesArray = gamesList.ToArray();
+		public void Load(List<GameContainer> _gamesList) {
+			gamesArray = _gamesList.ToArray();
 		}
 	}
 

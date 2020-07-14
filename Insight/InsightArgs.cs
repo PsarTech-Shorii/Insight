@@ -11,10 +11,10 @@ namespace Insight {
 	}
 	
 	public class InsightArgs {
-		private readonly string[] _args;
+		private readonly string[] args;
 
 		public InsightArgs() {
-			_args = Environment.GetCommandLineArgs();
+			args = Environment.GetCommandLineArgs();
 			
 			UniqueId = ExtractValue(ArgNames.UniqueId);
 			NetworkAddress = ExtractValue(ArgNames.NetworkAddress);
@@ -35,20 +35,20 @@ namespace Insight {
 
 		#region Helper methods
 
-		private string ExtractValue(string argName, string defaultValue = null) {
-			if (!_args.Contains(argName)) return defaultValue;
+		private string ExtractValue(string _argName, string _defaultValue = null) {
+			if (!args.Contains(_argName)) return _defaultValue;
 
-			var index = _args.ToList().FindIndex(0, a => a.Equals(argName));
-			return _args[index + 1];
+			var index = args.ToList().FindIndex(0, _a => _a.Equals(_argName));
+			return args[index + 1];
 		}
 
-		private int ExtractValueInt(string argName, int defaultValue = -1) {
-			var number = ExtractValue(argName, defaultValue.ToString());
+		private int ExtractValueInt(string _argName, int _defaultValue = -1) {
+			var number = ExtractValue(_argName, _defaultValue.ToString());
 			return Convert.ToInt32(number);
 		}
 
-		public bool IsProvided(string argName) {
-			return _args.Contains(argName);
+		public bool IsProvided(string _argName) {
+			return args.Contains(_argName);
 		}
 
 		#endregion

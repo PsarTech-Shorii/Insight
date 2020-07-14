@@ -6,7 +6,7 @@ using UnityEngine.Assertions;
 
 namespace Insight {
 	public class InsightServer : InsightCommon {
-		private readonly List<int> _connectionsId = new List<int>();
+		private readonly List<int> connectionsId = new List<int>();
 
 		protected override void RegisterHandlers() {
 			transport.OnServerConnected.AddListener(HandleConnect);
@@ -20,7 +20,7 @@ namespace Insight {
 
 			transport.ServerStart();
 			
-			connectState = ConnectState.Connected;
+			IsConnected = true;
 		}
 
 		public override void StopInsight() {
@@ -28,71 +28,71 @@ namespace Insight {
 
 			transport.ServerStop();
 
-			connectState = ConnectState.Disconnected;
+			IsConnected = false;
 			
-			_connectionsId.Clear();
+			connectionsId.Clear();
 		}
 
-		private void HandleConnect(int connectionId) {
-			Debug.Log($"[InsightServer] - Client connected connectionID: {connectionId}", this);
+		private void HandleConnect(int _connectionId) {
+			Debug.Log($"[InsightServer] - Client connected connectionID: {_connectionId}", this);
 			
-			_connectionsId.Add(connectionId);
+			connectionsId.Add(_connectionId);
 		}
 
-		private void HandleDisconnect(int connectionId) {
-			Debug.Log($"[InsightServer] - Client disconnected connectionID: {connectionId}", this);
+		private void HandleDisconnect(int _connectionId) {
+			Debug.Log($"[InsightServer] - Client disconnected connectionID: {_connectionId}", this);
 
-			_connectionsId.Remove(connectionId);
+			connectionsId.Remove(_connectionId);
 		}
 
-		private void HandleData(int connectionId, ArraySegment<byte> data, int channelId) {
-			if (!_connectionsId.Contains(connectionId)) {
-				Debug.LogError($"HandleData: Unknown connectionId: {connectionId}", this);
+		private void HandleData(int _connectionId, ArraySegment<byte> _data, int _) {
+			if (!connectionsId.Contains(_connectionId)) {
+				Debug.LogError($"HandleData: Unknown connectionId: {_connectionId}", this);
 				return;
 			}
 			
 			var netMsg = new InsightNetworkMessage();
-			netMsg.Deserialize(new NetworkReader(data));
-			netMsg.connectionId = connectionId;
+			netMsg.Deserialize(new NetworkReader(_data));
+			netMsg.connectionId = _connectionId;
 
 			HandleMessage(netMsg);
 		}
 
-		private void OnError(int connectionId, Exception exception) {
+		private void OnError(int _connectionId, Exception _exception) {
 			// TODO Let's discuss how we will handle errors
-			Debug.LogException(exception);
+			Debug.LogException(_exception);
 		}
 
-		public void NetworkSend(int connectionId, InsightNetworkMessage netMsg, CallbackHandler callback = null) {
+		public void NetworkSend(int _connectionId, InsightNetworkMessage _netMsg, CallbackHandler _callback = null) {
 			if (!transport.ServerActive()) {
 				Debug.LogError("Server.Send: not connected!", this);
 				return;
 			}
 
-			netMsg.connectionId = connectionId;
-			if(netMsg.callbackId == 0) RegisterCallback(netMsg, callback);
+			_netMsg.connectionId = _connectionId;
+			if(_netMsg.callbackId == 0) RegisterCallback(_netMsg, _callback);
 			
 			var writer = new NetworkWriter();
-			netMsg.Serialize(writer);
+			_netMsg.Serialize(writer);
 
-			transport.ServerSend(new List<int> {connectionId}, 0, writer.ToArraySegment());
+			transport.ServerSend(new List<int> {_connectionId}, 0, writer.ToArraySegment());
 		}
 
-		public void NetworkSend(int connectionId, InsightMessageBase msg, CallbackHandler callback = null) {
-			NetworkSend(connectionId, new InsightNetworkMessage(msg), callback);
+		public void NetworkSend(int _connectionId, InsightMessageBase _message, CallbackHandler _callback = null) {
+			NetworkSend(_connectionId, new InsightNetworkMessage(_message), _callback);
 		}
 
-		public void NetworkReply(int connectionId, InsightNetworkMessage netMsg) {
-			Assert.AreNotEqual(CallbackStatus.Default, netMsg.status);
-			NetworkSend(connectionId, netMsg);
+		public void NetworkReply(int _connectionId, InsightNetworkMessage _netMsg) {
+			Assert.AreNotEqual(CallbackStatus.Default, _netMsg.status);
+			NetworkSend(_connectionId, _netMsg);
 		}
 
-		protected override void Resend(InsightMessage insightMsg, CallbackHandler callback) {
-			if (insightMsg is InsightNetworkMessage netMsg) {
-				NetworkSend(netMsg.connectionId, netMsg, callback);
+		protected override void Resend(InsightMessage _insightMsg, CallbackHandler _callback) {
+			if (_insightMsg is InsightNetworkMessage netMsg) {
+				NetworkSend(netMsg.connectionId, netMsg, _callback);
 			}
 			else {
-				InternalSend(insightMsg, callback);
+				InternalSend(_insightMsg, _callback);
 			}
 		}
 	}

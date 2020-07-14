@@ -4,31 +4,30 @@ using UnityEngine;
 
 namespace Insight {
 	public class ServerAuthentication : InsightModule {
-		private InsightServer _server;
-
+		private InsightServer server;
+		
 		[HideInInspector] public List<UserContainer> registeredUsers = new List<UserContainer>();
 
-		public override void Initialize(InsightServer server, ModuleManager manager) {
-			_server = server;
-			
+		public override void Initialize(InsightServer _server, ModuleManager _manager) {
 			Debug.Log("[Server - Authentication] - Initialization");
+			server = _server;
 
 			RegisterHandlers();
 		}
 
 		private void RegisterHandlers() {
-			_server.transport.OnServerDisconnected.AddListener(HandleDisconnect);
+			server.transport.OnServerDisconnected.AddListener(HandleDisconnect);
 			
-			_server.RegisterHandler<LoginMsg>(HandleLoginMsg);
+			server.RegisterHandler<LoginMsg>(HandleLoginMsg);
 		}
 		
-		private void HandleDisconnect(int connectionId) {
-			registeredUsers.Remove(registeredUsers.Find(e => e.connectionId == connectionId));
+		private void HandleDisconnect(int _connectionId) {
+			registeredUsers.Remove(registeredUsers.Find(_e => _e.connectionId == _connectionId));
 		}
 		
-		private void HandleLoginMsg(InsightMessage insightMsg) {
-			if (insightMsg is InsightNetworkMessage netMsg) {
-				var message = (LoginMsg) insightMsg.message;
+		private void HandleLoginMsg(InsightMessage _insightMsg) {
+			if (_insightMsg is InsightNetworkMessage netMsg) {
+				var message = (LoginMsg) _insightMsg.message;
 				
 				Debug.Log($"[Server - Authentication] - Received login : {message.accountName} / {message.accountPassword}");
 
@@ -42,17 +41,17 @@ namespace Insight {
 					});
 
 					var responseToSend = new InsightNetworkMessage(new LoginMsg{uniqueId = uniqueId}) {
-						callbackId = insightMsg.callbackId,
+						callbackId = _insightMsg.callbackId,
 						status = CallbackStatus.Success
 					};
-					_server.NetworkReply(netMsg.connectionId, responseToSend);
+					server.NetworkReply(netMsg.connectionId, responseToSend);
 				}
 				else { //Login Failed
 					var responseToSend = new InsightNetworkMessage(new LoginMsg()) {
-						callbackId = insightMsg.callbackId,
+						callbackId = _insightMsg.callbackId,
 						status = CallbackStatus.Error
 					};
-					_server.NetworkReply(netMsg.connectionId, responseToSend);
+					server.NetworkReply(netMsg.connectionId, responseToSend);
 				}
 			}
 			else {
@@ -60,7 +59,7 @@ namespace Insight {
 			}
 		}
 
-		private bool Authenticated(LoginMsg message) { //Put your DB logic here
+		private bool Authenticated(LoginMsg _message) { //Put your DB logic here
 			return true;
 		}
 	}

@@ -3,97 +3,124 @@ using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Assertions;
+using UnityEngine.Events;
 
 namespace Insight {
+	public delegate void ConnectionDelegate();
+	
 	public class InsightClient : InsightCommon {
-		private int _serverConnId;
+		private int serverConnId;
 
-		private IEnumerator _reconnectCor;
+		private IEnumerator reconnectCor;
+		private bool toReconnect;
 
 		public bool autoReconnect = true;
 		public float reconnectDelayInSeconds = 5f;
 
+		public override bool IsConnected {
+			protected set {
+				connectState = value ? ConnectState.Connected : ConnectState.Disconnected;
+				if(IsConnected) OnConnected?.Invoke();
+				else OnDisconnected?.Invoke();
+			}
+		}
+
+		public event ConnectionDelegate OnConnected;
+		public event ConnectionDelegate OnDisconnected;
+
 		protected override void RegisterHandlers() {
-			transport.OnClientConnected.AddListener(OnConnected);
-			transport.OnClientDisconnected.AddListener(OnDisconnected);
+			transport.OnClientConnected.AddListener(() => IsConnected = true);
+			transport.OnClientDisconnected.AddListener(() => IsConnected = false);
 			transport.OnClientDataReceived.AddListener(HandleData);
 			transport.OnClientError.AddListener(OnError);
+
+			OnConnected += () => {
+				Debug.Log($"[InsightClient] - Connecting to Insight Server: {networkAddress}");
+				StopReconnect();
+			};
+
+			OnDisconnected += () => {
+				Debug.Log("[InsightClient] - Disconnecting from Insight Server");
+				if(toReconnect) StartReconnect();
+			};
 		}
 
 		public override void StartInsight() {
 			transport.ClientConnect(networkAddress);
 
-			if(_reconnectCor != null) {
-				StopCoroutine(_reconnectCor);
-				_reconnectCor = null;
-			}
-			_reconnectCor = ReconnectCor();
-			StartCoroutine(_reconnectCor);
+			toReconnect = true;
+			StartReconnect();
 		}
 
 		public override void StopInsight() {
 			transport.ClientDisconnect();
+
+			toReconnect = false;
 		}
 
-		private void OnConnected() {
-			Debug.Log($"[InsightClient] - Connecting to Insight Server: {networkAddress}");
-			
-			if(_reconnectCor != null) {
-				StopCoroutine(_reconnectCor);
-				_reconnectCor = null;
-			}
-			connectState = ConnectState.Connected;
-		}
-
-		private void OnDisconnected() {
-			Debug.Log("[InsightClient] - Disconnecting from Insight Server");
-			connectState = ConnectState.Disconnected;
-		}
-
-		private void HandleData(ArraySegment<byte> data, int channelId) {
+		private void HandleData(ArraySegment<byte> _data, int _) {
 			var netMsg = new InsightNetworkMessage();
-			netMsg.Deserialize(new NetworkReader(data));
+			netMsg.Deserialize(new NetworkReader(_data));
 
 			HandleMessage(netMsg);
 		}
 
-		private void OnError(Exception exception) {
+		private void OnError(Exception _exception) {
 			// TODO Let's discuss how we will handle errors
-			Debug.LogException(exception);
+			Debug.LogException(_exception);
 		}
 
-		public void NetworkSend(InsightNetworkMessage netMsg, CallbackHandler callback = null) {
+		public void NetworkSend(InsightNetworkMessage _netMsg, CallbackHandler _callback = null) {
 			if (!transport.ClientConnected()) {
 				Debug.LogError("[InsightClient] - Client not connected!");
 				return;
 			}
 
-			if(netMsg.callbackId == 0) RegisterCallback(netMsg, callback);
+			if(_netMsg.callbackId == 0) RegisterCallback(_netMsg, _callback);
 			
 			var writer = new NetworkWriter();
-			netMsg.Serialize(writer);
+			_netMsg.Serialize(writer);
 
 			transport.ClientSend(0, writer.ToArraySegment());
 		}
 
-		public void NetworkSend(InsightMessageBase msg, CallbackHandler callback = null) {
-			NetworkSend(new InsightNetworkMessage(msg), callback);
+		public void NetworkSend(InsightMessageBase _message, CallbackHandler _callback = null) {
+			NetworkSend(new InsightNetworkMessage(_message), _callback);
 		}
 
-		public void NetworkReply(InsightNetworkMessage netMsg) {
-			Assert.AreNotEqual(CallbackStatus.Default, netMsg.status);
-			NetworkSend(netMsg);
+		public void NetworkReply(InsightNetworkMessage _netMsg) {
+			Assert.AreNotEqual(CallbackStatus.Default, _netMsg.status);
+			NetworkSend(_netMsg);
 		}
 		
-		protected override void Resend(InsightMessage insightMsg, CallbackHandler callback) {
-			if (insightMsg is InsightNetworkMessage netMsg) {
-				NetworkSend(netMsg, callback);
+		protected override void Resend(InsightMessage _insightMsg, CallbackHandler _callback) {
+			if (_insightMsg is InsightNetworkMessage netMsg) {
+				NetworkSend(netMsg, _callback);
 			}
 			else {
-				InternalSend(insightMsg, callback);
+				InternalSend(_insightMsg, _callback);
 			}
 		}
 
+		private void StartReconnect() {
+			if (autoReconnect) {
+				if (reconnectCor != null) {
+					StopCoroutine(reconnectCor);
+					reconnectCor = null;
+				}
+
+				reconnectCor = ReconnectCor();
+				StartCoroutine(reconnectCor);
+			}
+		}
+
+		private void StopReconnect() {
+			if(reconnectCor != null) {
+				StopCoroutine(reconnectCor);
+				reconnectCor = null;
+			}
+		}
+		
 		private IEnumerator ReconnectCor() {
 			Assert.IsTrue(autoReconnect);
 			Assert.IsFalse(IsConnected);

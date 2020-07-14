@@ -4,18 +4,18 @@ using UnityEngine;
 
 namespace Insight {
 	public class ServerIdler : InsightModule {
-		private Transport _transport;
-		private NetworkManager _netManager;
+		private Transport transport;
+		private NetworkManager netManager;
 
-		private IEnumerator _exitCor;
+		private IEnumerator exitCor;
 
 		[SerializeField] private float maxMinutesOfIdle = 5f;
 
-		public override void Initialize(InsightClient client, ModuleManager manager) {
-			_transport = Transport.activeTransport;
-			_netManager = NetworkManager.singleton;
-			
+		public override void Initialize(InsightClient _client, ModuleManager _manager) {
 			Debug.Log("[ServerIdler] - Initialization");
+			
+			transport = Transport.activeTransport;
+			netManager = NetworkManager.singleton;
 
 			RegisterHandlers();
 			
@@ -23,21 +23,21 @@ namespace Insight {
 		}
 
 		private void RegisterHandlers() {
-			_transport.OnServerConnected.AddListener(CheckIdle);
-			_transport.OnServerDisconnected.AddListener(CheckIdle);
+			transport.OnServerConnected.AddListener(_ => CheckIdle());
+			transport.OnServerDisconnected.AddListener(_ => CheckIdle());
 		}
 
-		private void CheckIdle(int connectionId = -1) {
+		private void CheckIdle() {
 			if (NetworkServer.connections.Count > 0) {
-				if(_exitCor != null) {
-					StopCoroutine(_exitCor);
-					_exitCor = null;
+				if(exitCor != null) {
+					StopCoroutine(exitCor);
+					exitCor = null;
 				}
 			}
 			else {
-				if (_exitCor == null) {
-					_exitCor = WaitAndExitCor();
-					StartCoroutine(_exitCor);
+				if (exitCor == null) {
+					exitCor = WaitAndExitCor();
+					StartCoroutine(exitCor);
 				}
 			}
 		}
@@ -47,7 +47,7 @@ namespace Insight {
 
 			Debug.LogWarning("[ServerIdler] - No players connected within the allowed time. Shutting down server");
 
-			_netManager.StopServer();
+			netManager.StopServer();
 			Application.Quit();
 		}
 	}
