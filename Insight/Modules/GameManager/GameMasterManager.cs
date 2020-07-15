@@ -171,7 +171,8 @@ namespace Insight {
 
 			var requestSpawnStartMsg = new RequestSpawnStartToMasterMsg {
 				gameName = message.gameName,
-				minPlayers = message.minPlayers
+				minPlayers = message.minPlayers,
+				maxPlayers = message.maxPlayers
 			};
 				
 			server.InternalSend(requestSpawnStartMsg, _callbackMsg => {

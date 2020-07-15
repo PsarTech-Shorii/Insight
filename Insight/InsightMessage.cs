@@ -74,6 +74,7 @@ namespace Insight {
 		public ushort networkPort;
 		public string gameName;
 		public int minPlayers;
+		public int maxPlayers;
 
 		protected RequestSpawnStartMsg() {}
 
@@ -83,6 +84,7 @@ namespace Insight {
 			networkPort = _original.networkPort;
 			gameName = _original.gameName;
 			minPlayers = _original.minPlayers;
+			maxPlayers = _original.maxPlayers;
 		}
 	}
 
@@ -128,6 +130,7 @@ namespace Insight {
 		public string uniqueId; //Guid
 		public string gameName;
 		public int minPlayers;
+		public int maxPlayers;
 	}
 	
 	public class JoinGameMsg : InsightMessageBase {

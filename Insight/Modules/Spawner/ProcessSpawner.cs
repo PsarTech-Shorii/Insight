@@ -78,9 +78,9 @@ namespace Insight {
 		}
 		
 		private void StartClientWith(ConnectionDelegate _handler) {
-			if (client.IsConnected) {
+			/*if (client.IsConnected) {
 				_handler.Invoke();
-			}
+			}*/
 			
 			client.OnConnected += _handler;
 		}
@@ -113,7 +113,8 @@ namespace Insight {
 				           Space + ArgNames.NetworkAddress + Space + spawnerNetworkAddress +
 				           Space + ArgNames.NetworkPort + Space + (startingNetworkPort + thisPort) +
 				           Space + ArgNames.GameName + Space + message.gameName +
-				           Space + ArgNames.MinPlayers + Space + message.minPlayers;
+				           Space + ArgNames.MinPlayers + Space + message.minPlayers +
+				           Space + ArgNames.MaxPlayers + Space + message.maxPlayers;
 
 				var processInfo = new ProcessStartInfo {
 					FileName = System.IO.Path.Combine(processPath, processName),

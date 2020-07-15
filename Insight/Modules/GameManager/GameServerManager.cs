@@ -32,20 +32,20 @@ namespace Insight {
 			
 			transport = Transport.activeTransport;
 			netManager = NetworkManager.singleton;
-			maxPlayers = netManager.maxConnections;
 
 			GatherCmdArgs();
 			StartClientWith(RegisterGame);
 			
 			RegisterHandlers();
-			
+
+			netManager.maxConnections = maxPlayers;
 			netManager.StartServer();
 		}
 		
 		private void StartClientWith(ConnectionDelegate _handler) {
-			if (client.IsConnected) {
+			/*if (client.IsConnected) {
 				_handler.Invoke();
-			}
+			}*/
 			
 			client.OnConnected += _handler;
 		}
@@ -90,6 +90,11 @@ namespace Insight {
 				Debug.Log("[Args] - MinPlayers: " + args.MinPlayers);
 				minPlayers = args.MinPlayers;
 			}
+			
+			if (args.IsProvided(ArgNames.MaxPlayers)) {
+				Debug.Log("[Args] - MaxPlayers: " + args.MaxPlayers);
+				maxPlayers = args.MaxPlayers;
+			}
 		}
 
 		#region Sender
@@ -131,9 +136,12 @@ namespace Insight {
 			});
 		}
 
-		public void StartGame() {
+		public bool StartGame() {
+			if (netManager.numPlayers < minPlayers) return false;
+			
 			hasStarted = true;
 			GameUpdate();
+			return true;
 		}
 
 		#endregion

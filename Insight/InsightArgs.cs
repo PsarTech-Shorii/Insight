@@ -8,6 +8,7 @@ namespace Insight {
 		public static string NetworkPort => "-NetworkPort";
 		public static string GameName => "-GameName";
 		public static string MinPlayers => "-MinPlayers";
+		public static string MaxPlayers => "-MaxPlayers";
 	}
 	
 	public class InsightArgs {
@@ -21,6 +22,7 @@ namespace Insight {
 			NetworkPort = ExtractValueInt(ArgNames.NetworkPort);
 			GameName = ExtractValue(ArgNames.GameName);
 			MinPlayers = ExtractValueInt(ArgNames.MinPlayers);
+			MaxPlayers = ExtractValueInt(ArgNames.MaxPlayers);
 		}
 
 		#region Arguments
@@ -30,6 +32,7 @@ namespace Insight {
 		public int NetworkPort { get; }
 		public string GameName { get; }
 		public int MinPlayers { get; }
+		public int MaxPlayers { get; }
 
 		#endregion
 

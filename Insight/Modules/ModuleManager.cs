@@ -15,11 +15,17 @@ namespace Insight {
 		private void Awake() {
 			server = GetComponent<InsightServer>();
 			client = GetComponent<InsightClient>();
+
+			if (server) server.enabled = false;
+			if (client) client.enabled = false;
 		}
 
 		private void Start() {
 			AddModules(GetComponentsInChildren<InsightModule>());
 			InitializeModules();
+			
+			if (server) server.enabled = true;
+			if (client) client.enabled = true;
 		}
 
 		private void AddModule(InsightModule _module) {
