@@ -43,9 +43,7 @@ namespace Insight {
 		public override void Initialize(InsightClient _client, ModuleManager _manager) {
 			Debug.Log("[Client - ProcessSpawner] - Initialization");
 			client = _client;
-			
-			StartClientWith(RegisterSpawner);
-			
+
 			RegisterHandlers();
 		}
 
@@ -65,6 +63,7 @@ namespace Insight {
 
 		private void RegisterHandlers() {
 			if (client) {
+				client.OnConnected += RegisterSpawner;
 				client.OnDisconnected += HandleDisconnect;
 				
 				client.RegisterHandler<RequestSpawnStartToSpawnerMsg>(HandleRequestSpawnStart);
@@ -75,14 +74,6 @@ namespace Insight {
 				server.RegisterHandler<RequestSpawnStartToSpawnerMsg>(HandleRequestSpawnStart);
 				server.RegisterHandler<KillSpawnMsg>(HandleKillSpawn);
 			}
-		}
-		
-		private void StartClientWith(ConnectionDelegate _handler) {
-			/*if (client.IsConnected) {
-				_handler.Invoke();
-			}*/
-			
-			client.OnConnected += _handler;
 		}
 
 		private void HandleDisconnect() {

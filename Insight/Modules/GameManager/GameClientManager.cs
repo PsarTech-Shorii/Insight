@@ -32,26 +32,17 @@ namespace Insight {
 			client = _client;
 			netMananager = NetworkManager.singleton;
 			transport = Transport.activeTransport;
-			
-			StartClientWith(RegisterPlayer);
-			StartClientWith(GetGameList);
 
 			RegisterHandlers();
 		}
 
 		private void RegisterHandlers() {
+			client.OnConnected += RegisterPlayer;
+			client.OnConnected += GetGameList;
 			client.OnDisconnected += HandleDisconnect;
 
 			client.RegisterHandler<ChangeServerMsg>(HandleChangeServersMsg);
 			client.RegisterHandler<GameListStatusMsg>(HandleGameListStatutMsg);
-		}
-
-		private void StartClientWith(ConnectionDelegate _handler) {
-			/*if (client.IsConnected) {
-				_handler.Invoke();
-			}*/
-			
-			client.OnConnected += _handler;
 		}
 
 		#region Handler

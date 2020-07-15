@@ -34,23 +34,15 @@ namespace Insight {
 			netManager = NetworkManager.singleton;
 
 			GatherCmdArgs();
-			StartClientWith(RegisterGame);
 			
 			RegisterHandlers();
 
 			netManager.maxConnections = maxPlayers;
 			netManager.StartServer();
 		}
-		
-		private void StartClientWith(ConnectionDelegate _handler) {
-			/*if (client.IsConnected) {
-				_handler.Invoke();
-			}*/
-			
-			client.OnConnected += _handler;
-		}
 
 		private void RegisterHandlers() {
+			client.OnConnected += RegisterGame;
 			client.OnDisconnected += Application.Quit;
 			
 			transport.OnServerConnected.AddListener(_ => GameUpdate());
