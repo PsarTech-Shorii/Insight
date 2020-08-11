@@ -34,20 +34,20 @@ namespace Insight {
 		}
 
 		private void HandleConnect(int _connectionId) {
-			Debug.Log($"[InsightServer] - Client connected connectionID: {_connectionId}", this);
+			Debug.Log($"[InsightServer] - Client connected connectionID: {_connectionId}");
 			
 			connectionsId.Add(_connectionId);
 		}
 
 		private void HandleDisconnect(int _connectionId) {
-			Debug.Log($"[InsightServer] - Client disconnected connectionID: {_connectionId}", this);
+			Debug.Log($"[InsightServer] - Client disconnected connectionID: {_connectionId}");
 
 			connectionsId.Remove(_connectionId);
 		}
 
 		private void HandleData(int _connectionId, ArraySegment<byte> _data, int _) {
 			if (!connectionsId.Contains(_connectionId)) {
-				Debug.LogError($"HandleData: Unknown connectionId: {_connectionId}", this);
+				Debug.LogError($"[InsightServer] - Unknown connection of data to handle : {_connectionId}");
 				return;
 			}
 			
@@ -65,7 +65,7 @@ namespace Insight {
 
 		public void NetworkSend(int _connectionId, InsightNetworkMessage _netMsg, CallbackHandler _callback = null) {
 			if (!transport.ServerActive()) {
-				Debug.LogError("Server.Send: not connected!", this);
+				Debug.LogError("[InsightServer] - Can't networking send with server inactive !");
 				return;
 			}
 

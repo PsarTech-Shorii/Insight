@@ -11,7 +11,7 @@ namespace Insight {
 		}
 		
 		public override void Initialize(InsightClient _client, ModuleManager _manager) {
-			Debug.Log("[Client - MatchMaker] - Initialization");
+			Debug.Log("[ClientMatchMaker] - Initialization");
 			client = _client;
 			
 			gameModule = _manager.GetModule<GameClientManager>();
@@ -19,7 +19,7 @@ namespace Insight {
 
 		public void MatchGame() {
 			Assert.IsTrue(client.IsConnected);
-			Debug.Log("[Client - MatchMaker] - Match game"); 
+			Debug.Log("[ClientMatchMaker] - Match game"); 
 			
 			client.NetworkSend(new MatchGameMsg {uniqueId = gameModule.uniqueId}, 
 				_callbackMsg => client.InternalSend(_callbackMsg.message));

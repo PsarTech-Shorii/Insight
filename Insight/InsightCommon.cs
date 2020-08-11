@@ -21,8 +21,7 @@ namespace Insight {
 
 	public delegate void InsightMessageDelegate(InsightMessage _insightMsg);
 	public delegate void CallbackHandler(InsightMessage _insightMsg);
-
-	[RequireComponent(typeof(Transport))]
+	
 	public abstract class InsightCommon : MonoBehaviour {
 		private struct CallbackData {
 			public CallbackHandler callback;
@@ -80,7 +79,7 @@ namespace Insight {
 
 		public void RegisterHandler<T>(InsightMessageDelegate _handler) {
 			if (messageHandlers.ContainsKey(typeof(T))) {
-				Debug.Log($"NetworkConnection.RegisterHandler replacing {typeof(T)}");
+				Debug.Log($"[Insight] - NetworkConnection.RegisterHandler replacing {typeof(T)}");
 			}
 
 			messageHandlers.Add(typeof(T), _handler);
@@ -130,7 +129,7 @@ namespace Insight {
 				if (messageHandlers.TryGetValue(_insightMsg.MsgType, out var msgDelegate)) msgDelegate(_insightMsg);
 				else {
 					//NOTE: this throws away the rest of the buffer. Need more error codes
-					Debug.LogError($"Unknown message {_insightMsg.MsgType}");
+					Debug.LogError($"[Insight] - Unknown message {_insightMsg.MsgType}");
 				}
 			}
 		}

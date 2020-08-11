@@ -3,7 +3,6 @@ using Mirror;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Assertions;
-using UnityEngine.Events;
 
 namespace Insight {
 	public class GameClientManager : InsightModule {
@@ -28,7 +27,7 @@ namespace Insight {
 		}
 
 		public override void Initialize(InsightClient _client, ModuleManager _manager) {
-			Debug.Log("[GameClient - Manager] - Initialization");
+			Debug.Log("[GameClientManager] - Initialization");
 			client = _client;
 			netMananager = NetworkManager.singleton;
 			transport = Transport.activeTransport;
@@ -43,6 +42,13 @@ namespace Insight {
 
 			client.RegisterHandler<ChangeServerMsg>(HandleChangeServersMsg);
 			client.RegisterHandler<GameListStatusMsg>(HandleGameListStatutMsg);
+			
+			transport.OnClientDisconnected.AddListener(() => IsInGame = false);
+
+			OnGoInGame += _newValue => {
+				if (_newValue) netMananager.StartClient();
+				else netMananager.StopClient();
+			};
 		}
 
 		#region Handler
@@ -54,7 +60,7 @@ namespace Insight {
 		}
 		
 		private void HandleChangeServersMsg(InsightMessage _insightMsg) {
-			Debug.Log("[GameClient - Manager] - Connection to GameServer" +
+			Debug.Log("[GameClientManager] - Connection to GameServer" +
 			          (_insightMsg.status == CallbackStatus.Default ? "" : $" : {_insightMsg.status}"));
 
 			switch (_insightMsg.status) {
@@ -66,10 +72,9 @@ namespace Insight {
 							.SetValue(transport, responseReceived.networkPort);
 					}
 
-					IsInGame = true;
-
 					netMananager.networkAddress = responseReceived.networkAddress;
-					netMananager.StartClient();
+					IsInGame = true;
+					
 					break;
 				}
 				case CallbackStatus.Error:
@@ -90,7 +95,7 @@ namespace Insight {
 		private void HandleGameListStatutMsg(InsightMessage _insightMsg) {
 			var message = (GameListStatusMsg) _insightMsg.message;
 			
-			Debug.Log("[GameClient - Manager] - Received games list update");
+			Debug.Log("[GameClientManager] - Received games list update");
 
 			switch (message.operation) {
 				case GameListStatusMsg.Operation.Add:
@@ -101,7 +106,7 @@ namespace Insight {
 					break;
 				case GameListStatusMsg.Operation.Update:
 					var gameTemp = gamesList.Find(_game => _game.uniqueId == message.game.uniqueId);
-					gameTemp.currentPlayers = message.game.currentPlayers;
+					gameTemp.Update(message.game);
 					break;
 				default:
 					throw new ArgumentOutOfRangeException();
@@ -116,9 +121,9 @@ namespace Insight {
 
 		private void RegisterPlayer() {
 			Assert.IsTrue(client.IsConnected);
-			Debug.Log("[GameClient - Manager] - Registering player"); 
+			Debug.Log("[GameClientManager] - Registering player"); 
 			client.NetworkSend(new RegisterPlayerMsg(), _callbackMsg => {
-				Debug.Log($"[GameClient - Manager] - Received registration : {_callbackMsg.status}");
+				Debug.Log($"[GameClientManager] - Received registration : {_callbackMsg.status}");
 
 				Assert.AreNotEqual(CallbackStatus.Default, _callbackMsg.status);
 				switch (_callbackMsg.status) {
@@ -140,10 +145,10 @@ namespace Insight {
 
 		private void GetGameList() {
 			Assert.IsTrue(client.IsConnected);
-			Debug.Log("[GameClient - Manager] - Getting game list");
+			Debug.Log("[GameClientManager] - Getting game list");
 			
 			client.NetworkSend(new GameListMsg(), _callbackMsg => {
-				Debug.Log($"[GameClient - Manager] - Received games list : {_callbackMsg.status}");
+				Debug.Log($"[GameClientManager] - Received games list : {_callbackMsg.status}");
 				
 				Assert.AreNotEqual(CallbackStatus.Default, _callbackMsg.status);
 				switch (_callbackMsg.status) {
@@ -171,7 +176,7 @@ namespace Insight {
 		public void CreateGame(CreateGameMsg _createGameMsg) {
 			Assert.IsFalse(IsInGame);
 			Assert.IsTrue(client.IsConnected);
-			Debug.Log("[GameClient - Manager] - Creating game ");
+			Debug.Log("[GameClientManager] - Creating game ");
 			_createGameMsg.uniqueId = uniqueId;
 			client.NetworkSend(_createGameMsg, HandleChangeServersMsg);
 		}
@@ -179,7 +184,7 @@ namespace Insight {
 		public void JoinGame(string _gameUniqueId) {
 			Assert.IsFalse(IsInGame);
 			Assert.IsTrue(client.IsConnected);
-			Debug.Log("[GameClient - Manager] - Joining game : " + _gameUniqueId);
+			Debug.Log("[GameClientManager] - Joining game : " + _gameUniqueId);
 
 			client.NetworkSend(new JoinGameMsg {
 				uniqueId = uniqueId,
@@ -190,11 +195,10 @@ namespace Insight {
 		public void LeaveGame() {
 			Assert.IsTrue(IsInGame);
 			Assert.IsTrue(client.IsConnected);
-			Debug.Log("[GameClient - Manager] - Leaving game"); 
+			Debug.Log("[GameClientManager] - Leaving game"); 
 			
 			client.NetworkSend(new LeaveGameMsg{uniqueId = uniqueId});
 			IsInGame = false;
-			netMananager.StopClient();
 		}
 
 		#endregion

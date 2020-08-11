@@ -9,7 +9,7 @@ namespace Insight {
 		[HideInInspector] public List<UserContainer> registeredUsers = new List<UserContainer>();
 
 		public override void Initialize(InsightServer _server, ModuleManager _manager) {
-			Debug.Log("[Server - Authentication] - Initialization");
+			Debug.Log("[ServerAuthentication] - Initialization");
 			server = _server;
 
 			RegisterHandlers();
@@ -29,7 +29,7 @@ namespace Insight {
 			if (_insightMsg is InsightNetworkMessage netMsg) {
 				var message = (LoginMsg) _insightMsg.message;
 				
-				Debug.Log($"[Server - Authentication] - Received login : {message.accountName} / {message.accountPassword}");
+				Debug.Log($"[ServerAuthentication] - Received login : {message.accountName} / {message.accountPassword}");
 
 				if (Authenticated(message)) { //Login Sucessful
 					var uniqueId = Guid.NewGuid().ToString();
@@ -55,7 +55,7 @@ namespace Insight {
 				}
 			}
 			else {
-				Debug.LogError("[Server - Authentication] - Rejected (internal) login");
+				Debug.LogError("[ServerAuthentication] - Rejected (internal) login");
 			}
 		}
 

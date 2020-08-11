@@ -3,12 +3,12 @@ using System.Linq;
 
 namespace Insight {
 	public static class ArgNames {
-		public static string UniqueId => "-UniqueId";
-		public static string NetworkAddress => "-NetworkAddress";
-		public static string NetworkPort => "-NetworkPort";
-		public static string GameName => "-GameName";
-		public static string MinPlayers => "-MinPlayers";
-		public static string MaxPlayers => "-MaxPlayers";
+		public const string UniqueId = "-UniqueId";
+		public const string NetworkAddress = "-NetworkAddress";
+		public const string NetworkPort = "-NetworkPort";
+		public const string GameName = "-GameName";
+		public const string MinPlayers = "-MinPlayers";
+		public const string MaxPlayers = "-MaxPlayers";
 	}
 	
 	public class InsightArgs {

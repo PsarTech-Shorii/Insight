@@ -41,8 +41,6 @@ namespace Insight {
 		}
 
 		private void InitializeModule(InsightModule _module) {
-			if(client) Debug.Log($"InsightClient : {client.IsConnected}");
-			
 			var moduleType = _module.GetType();
 			
 			// Module is already initialized

@@ -32,7 +32,7 @@ namespace Insight {
 		public int maximumProcesses = 5;
 
 		public override void Initialize(InsightServer _server, ModuleManager _manager) {
-			Debug.Log("[Server - ProcessSpawner] - Initialization");
+			Debug.Log("[ProcessSpawner (Server)] - Initialization");
 			server = _server;
 
 			RegisterHandlers();
@@ -41,7 +41,7 @@ namespace Insight {
 		}
 
 		public override void Initialize(InsightClient _client, ModuleManager _manager) {
-			Debug.Log("[Client - ProcessSpawner] - Initialization");
+			Debug.Log("[ProcessSpawner (Client)] - Initialization");
 			client = _client;
 
 			RegisterHandlers();
@@ -79,7 +79,7 @@ namespace Insight {
 		private void HandleDisconnect() {
 			uniqueId = null;
 			foreach (var runningProcess in spawnerProcesses) {
-				runningProcess.process.Kill();
+				runningProcess.process?.Kill();
 			}
 		}
 

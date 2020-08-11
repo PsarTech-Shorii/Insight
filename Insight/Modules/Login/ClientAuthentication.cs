@@ -21,7 +21,7 @@ namespace Insight {
 		}
 
 		public override void Initialize(InsightClient _client, ModuleManager _manager) {
-			Debug.Log("[Client - Authentication] - Initialization");
+			Debug.Log("[ClientAuthentication] - Initialization");
 			client = _client;
 
 			RegisterHandlers();
@@ -39,10 +39,10 @@ namespace Insight {
 		public void SendLoginMsg(LoginMsg _message) {
 			Assert.IsFalse(IsLogin);
 			Assert.IsTrue(client.IsConnected);
-			Debug.Log("[Client - Authentication] - Logging in");
+			Debug.Log("[ClientAuthentication] - Logging in");
 
 			client.NetworkSend(_message, _callbackMsg => {
-				Debug.Log($"[Client - Authentication] - Received login response : {_callbackMsg.status}");
+				Debug.Log($"[ClientAuthentication] - Received login response : {_callbackMsg.status}");
 
 				Assert.AreNotEqual(CallbackStatus.Default, _callbackMsg.status);
 				switch (_callbackMsg.status) {

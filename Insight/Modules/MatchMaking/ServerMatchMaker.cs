@@ -11,7 +11,7 @@ namespace Insight {
 		}
 
 		public override void Initialize(InsightServer _server, ModuleManager _manager) {
-			Debug.Log("[Server - MatchMaker] - Initialization");
+			Debug.Log("[ServerMatchMaker] - Initialization");
 			server = _server;
 			
 			gameModule = _manager.GetModule<GameMasterManager>();
@@ -26,7 +26,7 @@ namespace Insight {
 		private void HandleMatchGameMsg(InsightMessage _insightMsg) {
 			var message = (MatchGameMsg) _insightMsg.message;
 			
-			Debug.Log("[Server - MatchMaker] - Received requesting match game");
+			Debug.Log("[ServerMatchMaker] - Received requesting match game");
 			
 			server.InternalSend(new JoinGameMsg {
 				uniqueId = message.uniqueId,

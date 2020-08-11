@@ -55,7 +55,7 @@ namespace Insight {
 		//Instead of handling the msg here we will forward it to an available spawner.
 		private void HandleSpawnRequestMsg(InsightMessage _insightMsg) {
 			if (registeredSpawners.Count == 0) {
-				Debug.LogWarning("[MasterSpawner] - No spawner regsitered to handle spawn request");
+				Debug.LogError("[MasterSpawner] - No spawner regsitered to handle spawn request");
 				return;
 			}
 
@@ -89,7 +89,7 @@ namespace Insight {
 		private void HandleSpawnerStatusMsg(InsightMessage _insightMsg) {
 			var message = (SpawnerStatusMsg) _insightMsg.message;
 
-			Debug.Log("Received process spawner update");
+			Debug.Log("[MasterSpawner] - Received process spawner update");
 			
 			var spawner = registeredSpawners.Find(_e => _e.uniqueId == message.uniqueId);
 			Assert.IsNotNull(spawner);

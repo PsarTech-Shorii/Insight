@@ -2,7 +2,6 @@
 using Mirror;
 using UnityEngine;
 using UnityEngine.Assertions;
-using UnityEngine.Events;
 
 namespace Insight {
 	public class GameServerManager : InsightModule {
@@ -22,7 +21,7 @@ namespace Insight {
 		private int minPlayers;
 		private int maxPlayers;
 		private int currentPlayers;
-		private bool hasStarted;
+		private bool isInMatch;
 
 		[SerializeField] private float updateDelayInSeconds = 1;
 
@@ -119,21 +118,28 @@ namespace Insight {
 
 			currentPlayers = NetworkServer.connections.Count;
 			
-			var startedText = hasStarted ? "started" : "not started";
-			Debug.Log($"[GameServerManager] - Updating game : {currentPlayers} players in the {startedText} game");
+			var inMatchText = isInMatch ? "in" : "out";
+			Debug.Log($"[GameServerManager] - Updating game : {currentPlayers} players in game {inMatchText} match");
 			client.NetworkSend(new GameStatusMsg {
-				uniqueId = uniqueId,
-				currentPlayers = currentPlayers,
-				hasStarted = hasStarted
+				game = new GameContainer {
+					uniqueId = uniqueId,
+					currentPlayers = currentPlayers,
+					isInMatch = isInMatch
+				}
 			});
 		}
 
 		public bool StartGame() {
 			if (netManager.numPlayers < minPlayers) return false;
 			
-			hasStarted = true;
+			isInMatch = true;
 			GameUpdate();
 			return true;
+		}
+
+		public void StopGame() {
+			isInMatch = false;
+			GameUpdate();
 		}
 
 		#endregion

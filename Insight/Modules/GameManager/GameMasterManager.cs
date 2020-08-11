@@ -25,7 +25,7 @@ namespace Insight {
 		}
 
 		public override void Initialize(InsightServer _server, ModuleManager _manager) {
-			Debug.Log("[GameMaster - Manager] - Initialization");
+			Debug.Log("[GameMasterManager] - Initialization");
 			server = _server;
 
 			RegisterHandlers();
@@ -69,7 +69,7 @@ namespace Insight {
 			if (_insightMsg is InsightNetworkMessage netMsg) {
 				var message = (RegisterGameMsg) _insightMsg.message;
 				
-				Debug.Log("[GameMaster - Manager] - Received game registration");
+				Debug.Log("[GameMasterManager] - Received game registration");
 
 				var game = new GameContainer {
 					connectionId = netMsg.connectionId,
@@ -95,7 +95,7 @@ namespace Insight {
 				LaunchGame(game.uniqueId);
 			}
 			else {
-				Debug.LogError("[GameMaster - Manager] - Rejected (Internal) game registration");
+				Debug.LogError("[GameMasterManager] - Rejected (Internal) game registration");
 			}
 		}
 		
@@ -103,7 +103,7 @@ namespace Insight {
 			if (_insightMsg is InsightNetworkMessage netMsg) {
 				// var message = (RegisterPlayerMsg) insightMsg.message;
 				
-				Debug.Log("[GameMaster - Manager] - Received player registration");
+				Debug.Log("[GameMasterManager] - Received player registration");
 
 				var playerUniqueId = Guid.NewGuid().ToString();
 				
@@ -122,18 +122,18 @@ namespace Insight {
 				server.NetworkReply(netMsg.connectionId, responseToSend);
 			}
 			else {
-				Debug.LogError("[GameMaster - Manager] - Rejected (Internal) player registration");
+				Debug.LogError("[GameMasterManager] - Rejected (Internal) player registration");
 			}
 		}
 
 		private void HandleGameStatusMsg(InsightMessage _insightMsg) {
 			var message = (GameStatusMsg) _insightMsg.message;
 
-			Debug.Log("[GameMaster - Manager] - Received game update");
+			Debug.Log("[GameMasterManager] - Received game update");
 
-			var game = registeredGameServers.Find(_e => _e.uniqueId == message.uniqueId);
+			var game = registeredGameServers.Find(_e => _e.uniqueId == message.game.uniqueId);
 			Assert.IsNotNull(game);
-			game.currentPlayers = message.currentPlayers;
+			game.Update(message.game);
 			
 			foreach (var playerTemp in registeredPlayers) {
 				server.NetworkSend(playerTemp.connectionId, new GameListStatusMsg {
@@ -146,7 +146,7 @@ namespace Insight {
 		private void HandleGameListMsg(InsightMessage _insightMsg) {
 			// var message = (GameListMsg) insightMsg.message;
 
-			Debug.Log("[GameMaster - Manager] - Received player requesting game list");
+			Debug.Log("[GameMasterManager] - Received player requesting game list");
 
 			var gamesListMsg = new GameListMsg();
 			gamesListMsg.Load(registeredGameServers);
@@ -167,7 +167,7 @@ namespace Insight {
 		private void HandleCreateGameMsg(InsightMessage _insightMsg) {
 			var message = (CreateGameMsg) _insightMsg.message;
 
-			Debug.Log("[GameMaster - Manager] - Received player requesting game creation");
+			Debug.Log("[GameMasterManager] - Received player requesting game creation");
 
 			var requestSpawnStartMsg = new RequestSpawnStartToMasterMsg {
 				gameName = message.gameName,
@@ -176,7 +176,7 @@ namespace Insight {
 			};
 				
 			server.InternalSend(requestSpawnStartMsg, _callbackMsg => {
-				Debug.Log($"[GameMaster - Manager] - Received games create : {_callbackMsg.status}");
+				Debug.Log($"[GameMasterManager] - Received games create : {_callbackMsg.status}");
 
 				Assert.AreNotEqual(CallbackStatus.Default, _callbackMsg.status);
 				switch (_callbackMsg.status) {
@@ -227,7 +227,7 @@ namespace Insight {
 		private void HandleJoinGameMsg(InsightMessage _insightMsg) {
 			var message = (JoinGameMsg) _insightMsg.message;
 
-			Debug.Log($"[GameMaster - Manager] - Received player requesting join the game : {message.gameUniqueId}");
+			Debug.Log($"[GameMasterManager] - Received player requesting join the game : {message.gameUniqueId}");
 
 			var game = registeredGameServers.Find(_e => _e.uniqueId == message.gameUniqueId);
 			Assert.IsNotNull(game);
@@ -272,7 +272,7 @@ namespace Insight {
 		private void HandleLeaveGameMsg(InsightMessage _insightMsg) {
 			var message = (LeaveGameMsg) _insightMsg.message;
 
-			Debug.Log("[GameMaster - Manager] - Received player requesting leave the game ");
+			Debug.Log("[GameMasterManager] - Received player requesting leave the game ");
 
 			playersInGame.Remove(message.uniqueId);
 		}
@@ -315,8 +315,14 @@ namespace Insight {
 		public string gameName;
 		public int minPlayers;
 		public int maxPlayers;
+		
 		public int currentPlayers;
-		public bool hasStarted;
+		public bool isInMatch;
+
+		public void Update(GameContainer _game) {
+			currentPlayers = _game.currentPlayers;
+			isInMatch = _game.isInMatch;
+		}
 	}
 	
 	[Serializable]

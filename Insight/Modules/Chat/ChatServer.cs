@@ -13,7 +13,7 @@ namespace Insight {
 		}
 
 		public override void Initialize(InsightServer _server, ModuleManager _manager) {
-			Debug.Log("[Server - Chat] - Initialization");
+			Debug.Log("[ChatServer] - Initialization");
 			server = _server;
 
 			authModule = _manager.GetModule<ServerAuthentication>();
@@ -30,7 +30,7 @@ namespace Insight {
 			if (_insightMsg is InsightNetworkMessage netMsg) {
 				var message = (ChatMsg) _insightMsg.message;
 				
-				Debug.Log("[Server - Chat] - Received Chat Message.");
+				Debug.Log("[ChatServer] - Received Chat Message.");
 
 				//Inject the username into the message
 				message.username = authModule.registeredUsers.Find(_e => _e.connectionId == netMsg.connectionId)
@@ -48,7 +48,7 @@ namespace Insight {
 				}
 			}
 			else {
-				Debug.Log("[Server - Chat] - Rejected (Internal) Chat Message.");
+				Debug.Log("[ChatServer] - Rejected (Internal) Chat Message.");
 			}
 		}
 	}
